@@ -922,85 +922,82 @@ function enqueue(body) {
   updateQueueBadge();
 }
 
+// Send one operation to the sheet. Returns true on success, false on failure.
 async function sendToSheet(body) {
-  const url = getUrl(); if(!url) throw new Error('no url');
-  const encoded = encodeURIComponent(JSON.stringify(body));
-  // Apps Script GET with payload - fire and check response
-  const r = await fetch(url + '?payload=' + encoded, { redirect:'follow', cache:'no-store' });
-  if(!r.ok) throw new Error('HTTP ' + r.status);
-  // Try to parse response but don't fail if we can't
+  const url = getUrl(); if(!url) return false;
   try {
+    const encoded = encodeURIComponent(JSON.stringify(body));
+    const r = await fetch(url + '?payload=' + encoded, { redirect:'follow', cache:'no-store' });
+    if(!r.ok) return false;
     const text = await r.text();
+    // Empty response = redirect issue, treat as failure
+    if(!text || !text.trim()) return false;
     const d = JSON.parse(text);
-    if(d && d.error) throw new Error(d.error);
+    // Server returned an error
+    if(d && d.error) { console.warn('Sheet error:', d.error); return false; }
+    return true;
   } catch(e) {
-    // If JSON parse fails it just means Apps Script returned something unexpected
-    // but the request likely succeeded - don't re-queue
-    if(e.message && e.message !== 'JSON parse') console.warn('Sheet response:', e.message);
+    console.warn('sendToSheet failed:', e.message);
+    return false;
   }
 }
 
+// Pull fresh data from the sheet and update local state
+async function pullFromSheet() {
+  const data = await apiGetAll();
+  entries = (data.entries||[]).filter(r=>r.id).map(r=>({
+    ...r, date:normaliseDate(r.date), clockIn:toHHMM(r.clockIn), clockOut:toHHMM(r.clockOut)
+  }));
+  cacheEntries();
+  if(data.classes&&data.classes.length){ classes=data.classes; saveClasses(); populateSelects(); }
+  renderEntries();
+}
+
+// Flush queued offline operations then pull fresh data
 async function flushQueue() {
   const url = getUrl(); if(!url) return;
   const q = dedupeQueue(loadQueue()); if(!q.length) return;
   let synced = 0;
   const failed = [];
   for(const item of q) {
-    try {
-      await sendToSheet(item.body);
-      synced++;
-    } catch(e) {
-      console.warn('Queue flush failed:', e.message);
-      failed.push(item);
-    }
+    const ok = await sendToSheet(item.body);
+    if(ok) synced++; else failed.push(item);
   }
   saveQueue(failed);
   updateQueueBadge();
   if(synced > 0) {
     toast('Synced ' + synced + ' offline change' + (synced!==1?'s':''), '☁️');
   }
-  // Always refresh from sheet after flush attempt
-  try {
-    const data = await apiGetAll();
-    entries = (data.entries||[]).filter(r=>r.id).map(r=>({
-      ...r, date:normaliseDate(r.date), clockIn:toHHMM(r.clockIn), clockOut:toHHMM(r.clockOut)
-    }));
-    cacheEntries();
-    if(data.classes&&data.classes.length){ classes=data.classes; saveClasses(); populateSelects(); }
-    renderEntries();
-  } catch {}
+  if(failed.length > 0) {
+    toast(failed.length + ' change' + (failed.length!==1?'s':'') + ' could not sync - will retry', '⚠️');
+  }
+}
+
+// Main sync: flush queue then pull latest from sheet
+async function syncWithSheet() {
+  if(!navigator.onLine) return;
+  await flushQueue();
+  try { await pullFromSheet(); } catch {}
 }
 
 async function apiPost(body) {
   const url = getUrl(); if(!url) return;
   if(!navigator.onLine) { enqueue(body); return; }
-  try {
-    await sendToSheet(body);
-  } catch {
-    enqueue(body);
-  }
+  const ok = await sendToSheet(body);
+  if(!ok) enqueue(body);
   updateQueueBadge();
 }
 
+// Sync when connection is restored
 window.addEventListener('online', () => {
-  toast('Back online - syncing...', '📶');
-  // Small delay to let connection stabilise then flush + refresh
-  setTimeout(async () => {
-    await flushQueue();
-    // Even if queue was empty, refresh data from sheet
-    if(!loadQueue().length) {
-      try {
-        const data = await apiGetAll();
-        entries = (data.entries||[]).filter(r=>r.id).map(r=>({
-          ...r, date:normaliseDate(r.date), clockIn:toHHMM(r.clockIn), clockOut:toHHMM(r.clockOut)
-        }));
-        cacheEntries();
-        if(data.classes&&data.classes.length){ classes=data.classes; saveClasses(); populateSelects(); }
-        renderEntries();
-        toast('Data refreshed from Sheets', '✅');
-      } catch {}
-    }
-  }, 2000);
+  setTimeout(syncWithSheet, 2000);
+});
+
+// Sync when app is reopened (critical for PWA on Android/iOS)
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible' && navigator.onLine && getUrl()) {
+    setTimeout(syncWithSheet, 1000);
+  }
 });
 
 /* -------------------------------------------
@@ -1107,8 +1104,7 @@ async function saveEntry() {
   entries.push(entry); cacheEntries(); page=1; renderEntries();
   toast('Entry saved — add clock-out when class ends','✅');
   resetPicker('f');
-  try{await apiPost({action:'add',entry});}
-  catch{}
+  await apiPost({action:'add',entry});
 }
 
 /* -------------------------------------------
@@ -1146,16 +1142,14 @@ async function saveEdit() {
   cacheEntries(); renderEntries(); closeEdit();
   const d=calcDur(clockIn,clockOut);
   toast(d?`${d.label} · ${d.dec} hrs logged`:'Entry updated','✅');
-  try{await apiPost({action:'update',entry:e});}
-  catch{}
+  await apiPost({action:'update',entry:e});
 }
 async function quickDelete(id) {
   if(!confirm('Delete this entry?')) return;
   entries = entries.filter(x => x.id !== id);
   cacheEntries(); renderEntries();
   toast('Entry deleted','🗑');
-  try { await apiPost({ action:'delete', id }); }
-  catch{}
+  await apiPost({action:'delete', id});
 }
 
 async function deleteEntry() {
@@ -1164,8 +1158,7 @@ async function deleteEntry() {
   const id=editingId;
   entries=entries.filter(x=>x.id!==id); cacheEntries(); page=1; renderEntries(); closeEdit();
   toast('Entry deleted','🗑');
-  try{await apiPost({action:'delete',id});}
-  catch{toast('Deleted locally — sync failed','⚠️');}
+  await apiPost({action:'delete',id});
 }
 
 /* -------------------------------------------
@@ -1453,17 +1446,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Show queue badge if there are pending offline changes
+  // Show queue badge
   updateQueueBadge();
-  // Re-check badge after every potential write
-  document.addEventListener('visibilitychange', () => {
-    if(document.visibilityState === 'visible') updateQueueBadge();
-  });
 
-  // On startup if online and there's a queue, flush it
+  // On startup: if online, flush any queued changes then refresh from sheet
   if(navigator.onLine && getUrl()) {
     const q = loadQueue();
-    if(q.length) setTimeout(flushQueue, 2000);
+    if(q.length) {
+      // Has queued offline changes - flush them then the sheet pull above already happened
+      setTimeout(syncWithSheet, 2000);
+    }
   }
 
   // Register service worker — force update if new version available

@@ -1163,7 +1163,7 @@ input, select, textarea, button { font-family: inherit; }
 </div>
 
 <!-- LOADING OVERLAY -->
-<div class="loading-overlay" id="loadingOverlay">
+<div class="loading-overlay hidden" id="loadingOverlay">
   <div class="spinner"></div>
   <div class="loading-msg" id="loadingMsg">Loading from Google Sheets…</div>
 </div>
@@ -2096,12 +2096,12 @@ async function init() {
     if (el) el.addEventListener('change', updateDurPreview);
   });
 
-  // Load entries: try Sheets first, fall back to cache
+  // Load entries: try Sheets first, fall back to local cache
   if (getScriptUrl()) {
     showLoading('Loading from Google Sheets…');
     try {
       const rows = await sheetGet();
-      entries = rows.filter(r => r.id); // skip blank rows
+      entries = rows.filter(r => r.id);
       cacheEntries();
       hideLoading();
       toast(`Loaded ${entries.length} entries from Sheets`, '✅');
@@ -2111,12 +2111,9 @@ async function init() {
       toast('Could not reach Sheets — showing cached data', '⚠️');
     }
   } else {
+    // No URL yet — load from local cache silently
     entries = loadCachedEntries();
-    hideLoading();
-    if (!getScriptUrl()) {
-      // First time: show a subtle hint
-      setTimeout(() => toast('Tap ⚙ to connect Google Sheets', 'ℹ️'), 600);
-    }
+    setTimeout(() => toast('Tap ⚙ to connect Google Sheets', 'ℹ️'), 800);
   }
 
   renderEntries();

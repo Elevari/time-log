@@ -1,1445 +1,1587 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Time.Log</title>
-<meta name="description" content="Instructor time tracker">
-<meta name="theme-color" content="#0e0e11">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Time.Log">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Instructor Time Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Epilogue:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-/* ─── TOKENS ────────────────────────────────────────────────── */
+/* ─── DESIGN TOKENS ─────────────────────────────────────────── */
 :root {
-  --bg:        #0e0e11;
-  --bg2:       #17171c;
-  --bg3:       #1f1f27;
-  --border:    #2a2a35;
-  --border2:   #38384a;
-  --text:      #f0eff6;
-  --text2:     #9998b0;
-  --text3:     #5e5d75;
-  --accent:    #c8f04e;
-  --accent-bg: rgba(200,240,78,.08);
-  --warn:      #f0964e;
-  --warn-bg:   rgba(240,150,78,.08);
-  --danger:    #f04e6a;
-  --danger-bg: rgba(240,78,106,.08);
-  --r:         14px;
-  --rsm:       9px;
-  --shadow:    0 8px 32px rgba(0,0,0,.5);
-  --H:         'Syne', sans-serif;
-  --B:         'Epilogue', sans-serif;
-  --ease:      cubic-bezier(.22,1,.36,1);
+  --ink:        #0f172a;
+  --ink-2:      #334155;
+  --ink-3:      #64748b;
+  --surface:    #ffffff;
+  --surface-2:  #f8fafc;
+  --surface-3:  #f1f5f9;
+  --border:     #e2e8f0;
+  --accent:     #1d4ed8;
+  --accent-2:   #3b82f6;
+  --accent-bg:  #eff6ff;
+  --success:    #16a34a;
+  --success-bg: #f0fdf4;
+  --danger:     #dc2626;
+  --danger-bg:  #fef2f2;
+  --warn:       #d97706;
+  --warn-bg:    #fffbeb;
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+  --shadow:     0 4px 16px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.05);
+  --shadow-lg:  0 12px 40px rgba(0,0,0,.12);
+  --radius:     12px;
+  --radius-sm:  8px;
+  --radius-lg:  16px;
+  --font-head:  'DM Serif Display', Georgia, serif;
+  --font-body:  'DM Sans', sans-serif;
+  --transition: 200ms ease;
 }
-*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
-html { height:100%; }
+[data-theme="dark"] {
+  --ink:        #f1f5f9;
+  --ink-2:      #cbd5e1;
+  --ink-3:      #94a3b8;
+  --surface:    #0f172a;
+  --surface-2:  #1e293b;
+  --surface-3:  #334155;
+  --border:     #334155;
+  --accent:     #60a5fa;
+  --accent-2:   #93c5fd;
+  --accent-bg:  #1e3a5f;
+  --success:    #4ade80;
+  --success-bg: #052e16;
+  --danger:     #f87171;
+  --danger-bg:  #450a0a;
+  --warn:       #fbbf24;
+  --warn-bg:    #451a03;
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.4);
+  --shadow:     0 4px 16px rgba(0,0,0,.4);
+  --shadow-lg:  0 12px 40px rgba(0,0,0,.5);
+}
+
+/* ─── RESET ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; scroll-behavior: smooth; }
 body {
-  font-family: var(--B);
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100dvh;
-  -webkit-font-smoothing: antialiased;
-  overscroll-behavior: none;
+  font-family: var(--font-body);
+  background: var(--surface-2);
+  color: var(--ink);
+  min-height: 100vh;
+  line-height: 1.6;
+  transition: background var(--transition), color var(--transition);
 }
-input,select,textarea,button { font-family:inherit; }
-button { cursor:pointer; }
+input, select, textarea, button { font-family: inherit; }
+a { color: var(--accent); text-decoration: none; }
+img { max-width: 100%; }
 
-/* ─── APP SHELL ─────────────────────────────────────────────── */
-.app {
-  display: flex; flex-direction: column;
-  max-width: 480px; margin: 0 auto;
-  min-height: 100dvh;
-}
+/* ─── SCROLLBAR ───────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surface-3); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
 
-/* ─── HEADER ────────────────────────────────────────────────── */
+/* ─── LAYOUT ─────────────────────────────────────────────────── */
+.app-wrapper { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ─── HEADER ─────────────────────────────────────────────────── */
 .header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 1.5rem 1.25rem 1rem; flex-shrink: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  position: sticky; top: 0; z-index: 100;
 }
-.logo { font-family:var(--H); font-size:1.4rem; font-weight:800; letter-spacing:-.03em; }
-.logo span { color:var(--accent); }
-.hdr-btns { display:flex; gap:.4rem; }
-.icon-btn {
-  width:36px; height:36px;
-  background:var(--bg2); border:1px solid var(--border);
-  border-radius:var(--rsm); color:var(--text3); font-size:1rem;
-  display:flex; align-items:center; justify-content:center;
-  transition:all .15s; border:none;
+.header-inner {
+  max-width: 1200px; margin: 0 auto;
+  padding: 0 1.5rem;
+  height: 64px;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
 }
-.icon-btn:hover { background:var(--bg3); color:var(--text); }
+.brand { display: flex; align-items: center; gap: .75rem; }
+.brand-icon {
+  width: 38px; height: 38px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.brand-title { font-family: var(--font-head); font-size: 1.3rem; color: var(--ink); line-height: 1.1; }
+.brand-sub { font-size: .7rem; color: var(--ink-3); font-weight: 500; letter-spacing: .05em; text-transform: uppercase; }
+.header-actions { display: flex; align-items: center; gap: .5rem; }
+.btn-icon {
+  width: 36px; height: 36px;
+  background: var(--surface-3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-2); font-size: 1rem;
+  transition: all var(--transition);
+}
+.btn-icon:hover { background: var(--accent-bg); color: var(--accent); border-color: var(--accent-2); }
 
-/* ─── HINT BANNER ───────────────────────────────────────────── */
-.hint-banner {
-  margin: 0 1rem .75rem;
-  background: var(--accent-bg);
-  border: 1px solid rgba(200,240,78,.18);
-  border-radius: var(--r);
-  padding: .8rem 1rem;
-  display: flex; align-items: center; gap: .75rem;
-  animation: fadeUp .4s var(--ease) both;
+/* ─── NAV TABS ───────────────────────────────────────────────── */
+.nav-tabs {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
-.hint-banner.hidden { display:none; }
-.hint-text { flex:1; font-size:.8rem; color:var(--text2); line-height:1.4; }
-.hint-text strong { color:var(--accent); font-family:var(--H); display:block; margin-bottom:.1rem; }
-.btn-hint {
-  flex-shrink:0; padding:.48rem .85rem;
-  background:var(--accent); color:#0e0e11; border:none;
-  border-radius:var(--rsm); font-family:var(--H);
-  font-size:.76rem; font-weight:700; transition:background .15s;
+.nav-tabs-inner {
+  max-width: 1200px; margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex; gap: 0; overflow-x: auto;
+  scrollbar-width: none;
 }
-.btn-hint:hover { background:#d4f55e; }
-.hint-close {
-  background:none; border:none; color:var(--text3);
-  font-size:1rem; padding:.2rem; line-height:1;
-  transition:color .15s; flex-shrink:0;
-}
-.hint-close:hover { color:var(--text); }
-
-/* ─── INSTALL BANNER ────────────────────────────────────────── */
-.install-banner {
-  display:none; margin:0 1rem .75rem;
-  background:var(--bg2); border:1px solid var(--border);
-  border-radius:var(--r); padding:.8rem 1rem;
-  align-items:center; gap:.75rem;
-}
-.install-banner.show { display:flex; }
-.install-text { flex:1; font-size:.8rem; color:var(--text2); line-height:1.4; }
-.install-text strong { color:var(--text); font-family:var(--H); }
-.btn-install {
-  flex-shrink:0; padding:.48rem .85rem;
-  background:var(--accent); color:#0e0e11; border:none;
-  border-radius:var(--rsm); font-family:var(--H);
-  font-size:.76rem; font-weight:700; transition:background .15s;
-}
-.btn-install:hover { background:#d4f55e; }
-
-/* ─── TAB BAR ───────────────────────────────────────────────── */
-.tab-bar {
-  display:flex; gap:.2rem;
-  margin:0 1rem .75rem;
-  background:var(--bg2); border:1px solid var(--border);
-  border-radius:var(--r); padding:.3rem; flex-shrink:0;
-}
+.nav-tabs-inner::-webkit-scrollbar { display: none; }
 .tab-btn {
-  flex:1; padding:.55rem .4rem;
-  background:none; border:none; border-radius:var(--rsm);
-  color:var(--text3); font-family:var(--H);
-  font-size:.72rem; font-weight:700; letter-spacing:.04em;
-  text-transform:uppercase; transition:all .15s;
+  padding: .75rem 1.25rem;
+  background: none; border: none; cursor: pointer;
+  color: var(--ink-3); font-size: .875rem; font-weight: 500;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all var(--transition);
+  display: flex; align-items: center; gap: .4rem;
 }
-.tab-btn.active { background:var(--bg3); color:var(--text); }
+.tab-btn:hover { color: var(--ink-2); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-/* ─── TAB PANELS ────────────────────────────────────────────── */
-.tab-panel { display:none; flex:1; overflow-y:auto; padding-bottom:2rem; }
-.tab-panel.active { display:block; animation:fadeUp .2s var(--ease) both; }
-@keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+/* ─── MAIN CONTENT ───────────────────────────────────────────── */
+.main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; flex: 1; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
 
-/* ─── CARDS ─────────────────────────────────────────────────── */
+/* ─── CARDS ──────────────────────────────────────────────────── */
 .card {
-  margin:0 1rem .75rem;
-  background:var(--bg2); border:1px solid var(--border);
-  border-radius:var(--r); padding:1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem;
+  transition: box-shadow var(--transition);
 }
-.card-lbl {
-  font-family:var(--H); font-size:.68rem; font-weight:700;
-  letter-spacing:.1em; text-transform:uppercase;
-  color:var(--text3); margin-bottom:1rem;
+.card-title {
+  font-family: var(--font-head); font-size: 1.15rem;
+  color: var(--ink); margin-bottom: 1.25rem;
+  display: flex; align-items: center; gap: .5rem;
 }
+.card-title span { font-size: 1rem; }
 
-/* ─── FIELDS ────────────────────────────────────────────────── */
-.field { margin-bottom:.85rem; }
-.field:last-child { margin-bottom:0; }
-.field label {
-  display:block; font-size:.7rem; font-weight:500;
-  color:var(--text3); letter-spacing:.06em;
-  text-transform:uppercase; margin-bottom:.4rem;
+/* ─── QUICK CLOCK ROW ────────────────────────────────────────── */
+.quick-clock {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+  margin-bottom: 1.5rem;
 }
-.field input,
-.field select {
-  width:100%; background:var(--bg3);
-  border:1.5px solid var(--border); border-radius:var(--rsm);
-  padding:.75rem 1rem; color:var(--text);
-  font-size:1rem; appearance:none; outline:none;
-  transition:border-color .15s, box-shadow .15s;
+.quick-btn {
+  padding: 1rem 1.25rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  display: flex; align-items: center; gap: .75rem;
+  font-size: .875rem; font-weight: 500; color: var(--ink-2);
+  transition: all var(--transition);
 }
-.field input:focus,
-.field select:focus {
-  border-color:var(--accent);
-  box-shadow:0 0 0 3px rgba(200,240,78,.1);
-}
-.field input::placeholder { color:var(--text3); }
-.sel-wrap { position:relative; }
-.sel-wrap::after {
-  content:'▾'; position:absolute;
-  right:.85rem; top:50%; transform:translateY(-50%);
-  color:var(--text3); font-size:.75rem; pointer-events:none;
-}
-.sel-wrap select { padding-right:2rem; }
+.quick-btn:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+.quick-btn.clock-in:hover { border-color: var(--success); color: var(--success); background: var(--success-bg); }
+.quick-btn.clock-out:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-bg); }
+.quick-btn .icon { font-size: 1.4rem; }
+.quick-btn .label { display: flex; flex-direction: column; align-items: flex-start; gap: .1rem; }
+.quick-btn .label strong { font-size: 1rem; }
+.quick-btn .label small { font-size: .75rem; opacity: .7; }
 
-/* ─── TIME PICKER ───────────────────────────────────────────── */
-.time-pick { display:grid; grid-template-columns:1fr 1fr 80px; gap:.4rem; }
-.ampm-toggle {
-  display:flex; border-radius:var(--rsm);
-  overflow:hidden; border:1.5px solid var(--border);
+/* ─── FORM ───────────────────────────────────────────────────── */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+.form-group { display: flex; flex-direction: column; gap: .35rem; }
+.form-group.full { grid-column: 1 / -1; }
+label {
+  font-size: .8rem; font-weight: 600; color: var(--ink-2);
+  letter-spacing: .03em; text-transform: uppercase;
 }
-.ampm-btn {
-  flex:1; padding:.65rem .2rem;
-  background:var(--bg3); border:none;
-  color:var(--text3); font-family:var(--H);
-  font-size:.78rem; font-weight:700; letter-spacing:.04em;
-  transition:background .12s,color .12s;
+.form-control {
+  padding: .6rem .85rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: .9rem;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  width: 100%;
 }
-.ampm-btn:first-child { border-right:1px solid var(--border); }
-.ampm-btn.on { background:var(--accent); color:#0e0e11; }
+.form-control:focus {
+  outline: none;
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+}
+.form-control::placeholder { color: var(--ink-3); }
+.time-row { display: grid; grid-template-columns: 1fr 80px; gap: .5rem; }
+.duration-pill {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .35rem .75rem;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-2);
+  border-radius: 99px;
+  font-size: .8rem; font-weight: 600; color: var(--accent);
+  margin-top: .25rem;
+}
+.duration-pill.invalid { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
 
-/* ─── ADD CLASS ─────────────────────────────────────────────── */
-.add-row { display:none; gap:.4rem; margin-top:.5rem; }
-.add-row.open { display:flex; }
-.add-row input {
-  flex:1; background:var(--bg3);
-  border:1.5px solid var(--accent);
-  border-radius:var(--rsm); padding:.6rem .85rem;
-  color:var(--text); font-size:.9rem; outline:none;
+/* ─── BUTTONS ────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+  padding: .65rem 1.4rem;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: .875rem; font-weight: 600;
+  cursor: pointer; transition: all var(--transition); white-space: nowrap;
 }
-.add-row input::placeholder { color:var(--text3); }
-.btn-add {
-  padding:.6rem .9rem; background:var(--accent); border:none;
-  border-radius:var(--rsm); color:#0e0e11;
-  font-family:var(--H); font-size:.78rem; font-weight:700;
-  transition:background .15s;
+.btn-primary {
+  background: var(--accent); color: #fff; border-color: var(--accent);
 }
-.btn-add:hover { background:#d4f55e; }
-.btn-x {
-  padding:.6rem .75rem; background:transparent;
-  border:1.5px solid var(--border2); border-radius:var(--rsm);
-  color:var(--text3); font-size:.8rem; transition:all .15s;
+.btn-primary:hover { background: #1e40af; border-color: #1e40af; box-shadow: 0 4px 12px rgba(29,78,216,.3); }
+.btn-secondary {
+  background: var(--surface-3); color: var(--ink-2); border-color: var(--border);
 }
-.btn-x:hover { color:var(--text); border-color:var(--text3); }
+.btn-secondary:hover { background: var(--surface-2); border-color: var(--ink-3); }
+.btn-danger { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+.btn-danger:hover { background: var(--danger); color: #fff; }
+.btn-success { background: var(--success-bg); color: var(--success); border-color: var(--success); }
+.btn-success:hover { background: var(--success); color: #fff; }
+.btn-sm { padding: .4rem .9rem; font-size: .8rem; }
+.btn-xs { padding: .25rem .6rem; font-size: .75rem; border-radius: 6px; }
+.form-actions { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; margin-top: .5rem; }
 
-/* ─── SUBMIT ────────────────────────────────────────────────── */
-.btn-submit {
-  width:100%; margin-top:1.1rem; padding:.9rem;
-  background:var(--accent); color:#0e0e11; border:none;
-  border-radius:var(--rsm); font-family:var(--H);
-  font-size:.9rem; font-weight:700; letter-spacing:.02em;
-  transition:background .15s,transform .1s;
+/* ─── STATS ROW ──────────────────────────────────────────────── */
+.stats-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem; margin-bottom: 1.5rem;
 }
-.btn-submit:hover { background:#d4f55e; }
-.btn-submit:active { transform:scale(.98); }
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  display: flex; flex-direction: column; gap: .25rem;
+}
+.stat-label { font-size: .75rem; font-weight: 600; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; }
+.stat-value { font-family: var(--font-head); font-size: 1.6rem; color: var(--ink); line-height: 1.2; }
+.stat-sub { font-size: .75rem; color: var(--ink-3); }
+.stat-card.accent { border-color: var(--accent-2); }
+.stat-card.accent .stat-value { color: var(--accent); }
 
-/* ─── LIST ──────────────────────────────────────────────────── */
-.list-hdr {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:.25rem 1.25rem .65rem;
+/* ─── TABLE ──────────────────────────────────────────────────── */
+.table-controls {
+  display: flex; gap: .75rem; flex-wrap: wrap; align-items: center;
+  margin-bottom: 1rem;
 }
-.list-hdr .card-lbl { margin:0; }
-.list-count { font-size:.72rem; color:var(--text3); }
-.entries { padding:0 1rem; display:flex; flex-direction:column; gap:.4rem; }
-
-/* ─── ENTRY CARD ────────────────────────────────────────────── */
-.entry {
-  background:var(--bg2); border:1.5px solid var(--border);
-  border-radius:var(--r); padding:.9rem 1rem;
-  position:relative; overflow:hidden;
-  transition:border-color .15s,background .15s;
-  animation:fadeUp .3s var(--ease) both;
-  display:flex; flex-direction:row; align-items:stretch; gap:.75rem;
+.table-controls .form-control { max-width: 200px; }
+.search-wrap { position: relative; flex: 1; min-width: 160px; max-width: 280px; }
+.search-wrap input { padding-left: 2.2rem; }
+.search-icon {
+  position: absolute; left: .7rem; top: 50%; transform: translateY(-50%);
+  color: var(--ink-3); font-size: .9rem; pointer-events: none;
 }
-.entry::before {
-  content:''; position:absolute;
-  left:0; top:0; bottom:0; width:3px;
+.table-wrap { overflow-x: auto; }
+table {
+  width: 100%; border-collapse: collapse; font-size: .875rem;
 }
-.entry.done::before    { background:var(--accent); }
-.entry.pending::before { background:var(--warn); }
-/* left: class/date + times stacked */
-.entry-main { flex:1; min-width:0; cursor:pointer; display:flex; flex-direction:column; gap:.5rem; }
-.entry-top-row { display:flex; align-items:center; gap:.5rem; }
-.entry-left { min-width:0; flex:1; }
-.entry-class { font-family:var(--H); font-size:.95rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.entry-date  { font-size:.72rem; color:var(--text3); margin-top:.1rem; }
-.entry-bottom-row { display:flex; align-items:center; gap:.45rem; }
-.t-val       { font-family:var(--H); font-size:.95rem; font-weight:600; white-space:nowrap; }
-.t-val.no-time { color:var(--text3); }
-.t-arrow { color:var(--text3); font-size:.8rem; }
-/* right: delete button + duration stacked */
-.entry-right {
-  display:flex; flex-direction:column;
-  align-items:center; justify-content:space-between;
-  flex-shrink:0; gap:.4rem;
+thead th {
+  padding: .7rem 1rem;
+  background: var(--surface-2);
+  border-bottom: 2px solid var(--border);
+  text-align: left; font-size: .75rem; font-weight: 600;
+  color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em;
+  cursor: pointer; user-select: none; white-space: nowrap;
 }
-.dur { font-family:var(--H); font-size:.82rem; font-weight:700; color:var(--accent); white-space:nowrap; margin-left:auto; }
-.dur small { display:block; font-family:var(--B); font-size:.68rem; font-weight:400; color:var(--text3); }
+thead th:hover { color: var(--ink); }
+thead th .sort-icon { margin-left: .3rem; opacity: .4; }
+thead th.sorted .sort-icon { opacity: 1; color: var(--accent); }
+tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition);
+}
+tbody tr:hover { background: var(--surface-2); }
+tbody td {
+  padding: .75rem 1rem; vertical-align: middle; color: var(--ink-2);
+}
+tbody td:first-child { color: var(--ink); font-weight: 500; }
 .badge {
-  font-size:.6rem; font-weight:700; letter-spacing:.06em;
-  text-transform:uppercase; padding:.22rem .5rem;
-  border-radius:99px; white-space:nowrap; flex-shrink:0;
+  display: inline-flex; padding: .2rem .6rem;
+  border-radius: 99px; font-size: .75rem; font-weight: 600;
+  background: var(--accent-bg); color: var(--accent);
 }
-.badge.done    { background:var(--accent-bg); color:var(--accent); border:1px solid rgba(200,240,78,.2); }
-.badge.pending { background:var(--warn-bg);   color:var(--warn);   border:1px solid rgba(240,150,78,.2); }
+.action-btns { display: flex; gap: .35rem; }
+.pagination {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; margin-top: 1rem; flex-wrap: wrap;
+}
+.pagination-info { font-size: .8rem; color: var(--ink-3); }
+.pagination-btns { display: flex; gap: .35rem; }
 
-/* ─── EMPTY STATE ───────────────────────────────────────────── */
-.empty { text-align:center; padding:3rem 1.5rem; color:var(--text3); }
-.empty-icon { font-size:2.2rem; margin-bottom:.75rem; opacity:.4; }
-.empty-txt  { font-size:.875rem; line-height:1.6; }
+/* ─── CHART GRID ─────────────────────────────────────────────── */
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+.chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; }
+.chart-title { font-size: .875rem; font-weight: 600; color: var(--ink-2); margin-bottom: 1rem; }
+.chart-container { position: relative; height: 220px; }
+.chart-container canvas { max-height: 220px; }
+.chart-full { grid-column: 1 / -1; }
 
-/* ─── ENTRY DELETE BTN ───────────────────────────────────────── */
-.entry-del {
-  flex-shrink:0;
-  width:28px; height:28px;
-  background:none; border:1.5px solid var(--border2);
-  border-radius:6px; color:var(--text3);
-  font-size:.8rem; line-height:1;
-  display:flex; align-items:center; justify-content:center;
-  transition:all .15s; z-index:1;
+/* ─── MODAL ──────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,.5); backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center; padding: 1rem;
+  opacity: 0; pointer-events: none; transition: opacity var(--transition);
 }
-.entry-del:hover { background:var(--danger-bg); border-color:var(--danger); color:var(--danger); }
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--surface); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg); padding: 1.5rem;
+  width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto;
+  transform: translateY(16px) scale(.97);
+  transition: transform var(--transition);
+}
+.modal-overlay.open .modal { transform: translateY(0) scale(1); }
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+.modal-title { font-family: var(--font-head); font-size: 1.2rem; color: var(--ink); }
+.modal-footer { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.25rem; }
 
-/* ─── PAGINATION ────────────────────────────────────────────── */
-.pagination { display:none; align-items:center; justify-content:space-between; padding:.75rem 1rem 0; gap:.5rem; }
-.pagination.show { display:flex; }
-.pg-info { font-size:.72rem; color:var(--text3); }
-.pg-btns { display:flex; gap:.3rem; }
-.pg-btn {
-  width:32px; height:32px; border-radius:var(--rsm);
-  border:1.5px solid var(--border); background:var(--bg2);
-  color:var(--text2); font-family:var(--H); font-size:.8rem; font-weight:700;
-  display:flex; align-items:center; justify-content:center;
-  transition:all .15s;
-}
-.pg-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
-.pg-btn.on  { background:var(--accent); border-color:var(--accent); color:#0e0e11; }
-.pg-btn:disabled { opacity:.3; cursor:not-allowed; }
-
-/* ─── SUMMARY ───────────────────────────────────────────────── */
-.range-grid { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; margin-bottom:.75rem; }
-.range-grid .field { margin:0; }
-.btn-calc {
-  width:100%; padding:.85rem; background:var(--accent); color:#0e0e11;
-  border:none; border-radius:var(--rsm); font-family:var(--H);
-  font-size:.9rem; font-weight:700;
-  transition:background .15s,transform .1s; margin-bottom:1rem;
-}
-.btn-calc:hover  { background:#d4f55e; }
-.btn-calc:active { transform:scale(.98); }
-.result { display:none; flex-direction:column; gap:.65rem; }
-.result.show { display:flex; }
-.result-total {
-  background:var(--accent-bg); border:1px solid rgba(200,240,78,.2);
-  border-radius:var(--rsm); padding:1rem 1.1rem;
-  display:flex; align-items:center; justify-content:space-between; gap:1rem;
-}
-.res-lbl      { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text2); }
-.res-big      { font-family:var(--H); font-size:1.9rem; font-weight:800; color:var(--accent); letter-spacing:-.03em; line-height:1; }
-.res-dec      { font-size:.78rem; color:var(--text3); margin-top:.2rem; }
-.res-sessions { font-family:var(--H); font-size:1.4rem; font-weight:800; color:var(--text); }
-.warn-note {
-  display:flex; align-items:center; gap:.4rem;
-  font-size:.75rem; color:var(--warn);
-  padding:.6rem .85rem; background:var(--warn-bg);
-  border:1px solid rgba(240,150,78,.2); border-radius:var(--rsm);
-}
-.bk-lbl { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text3); }
-.bk-row {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:.65rem 0; border-bottom:1px solid var(--border); gap:.5rem;
-}
-.bk-row:last-child { border-bottom:none; }
-.bk-class { font-family:var(--H); font-size:.85rem; font-weight:700; }
-.bk-date  { font-size:.72rem; color:var(--text3); }
-.bk-dur   { font-family:var(--H); font-size:.88rem; font-weight:700; color:var(--accent); text-align:right; white-space:nowrap; }
-.bk-dur small { display:block; font-family:var(--B); font-size:.7rem; font-weight:400; color:var(--text3); }
-.res-empty { text-align:center; padding:1.5rem; color:var(--text3); font-size:.85rem; }
-
-/* ─── BOTTOM SHEET (modal) ──────────────────────────────────── */
-.overlay {
-  position:fixed; inset:0; z-index:200;
-  background:rgba(0,0,0,.72); backdrop-filter:blur(6px);
-  display:flex; align-items:flex-end; justify-content:center;
-  opacity:0; pointer-events:none; transition:opacity .2s;
-}
-.overlay.open { opacity:1; pointer-events:all; }
-.sheet {
-  background:var(--bg2); border:1px solid var(--border2);
-  border-radius:var(--r) var(--r) 0 0;
-  width:100%; max-width:480px; max-height:92dvh;
-  overflow-y:auto; padding:1.5rem 1.25rem 2.5rem;
-  box-shadow:var(--shadow);
-  transform:translateY(24px); transition:transform .3s var(--ease);
-}
-.overlay.open .sheet { transform:translateY(0); }
-.sheet-handle { width:36px; height:4px; background:var(--border2); border-radius:99px; margin:0 auto 1.25rem; }
-.sheet-title  { font-family:var(--H); font-size:1.1rem; font-weight:800; letter-spacing:-.02em; margin-bottom:.2rem; }
-.sheet-sub    { font-size:.8rem; color:var(--text3); margin-bottom:1.25rem; }
-.sheet-div    { height:1px; background:var(--border); margin:1.1rem 0; }
-
-/* duration preview */
-.dur-preview {
-  display:none; align-items:center; gap:.6rem;
-  padding:.65rem .9rem; background:var(--accent-bg);
-  border:1px solid rgba(200,240,78,.2); border-radius:var(--rsm);
-  margin-top:-.25rem; margin-bottom:.5rem;
-}
-.dur-preview.show { display:flex; }
-.dur-main { font-family:var(--H); font-weight:700; color:var(--accent); font-size:.95rem; }
-.dur-dec  { font-size:.8rem; color:var(--text3); margin-left:.3rem; }
-
-/* sheet buttons */
-.sheet-btns { display:flex; gap:.6rem; margin-top:1rem; }
-.btn-cancel {
-  flex:1; padding:.85rem; background:var(--bg3);
-  border:1.5px solid var(--border2); border-radius:var(--rsm);
-  color:var(--text2); font-family:var(--H); font-size:.875rem; font-weight:700;
-  transition:all .15s;
-}
-.btn-cancel:hover { border-color:var(--text3); color:var(--text); }
-.btn-save {
-  flex:2; padding:.85rem; background:var(--accent); border:none;
-  border-radius:var(--rsm); color:#0e0e11;
-  font-family:var(--H); font-size:.875rem; font-weight:700;
-  transition:background .15s;
-}
-.btn-save:hover { background:#d4f55e; }
-.btn-delete {
-  width:100%; margin-top:.5rem; padding:.75rem;
-  background:transparent; border:1.5px solid rgba(240,78,106,.25);
-  border-radius:var(--rsm); color:var(--danger);
-  font-family:var(--H); font-size:.8rem; font-weight:700;
-  letter-spacing:.03em; transition:all .15s;
-}
-.btn-delete:hover { background:var(--danger-bg); border-color:var(--danger); }
-
-/* ─── SETTINGS SHEET ────────────────────────────────────────── */
-.setting-lbl {
-  font-size:.68rem; font-weight:700; text-transform:uppercase;
-  letter-spacing:.1em; color:var(--text3); margin-bottom:.7rem;
-}
-.conn-row { display:flex; gap:.4rem; margin-top:.6rem; }
-.btn-ghost {
-  padding:.65rem 1rem; background:var(--bg3);
-  border:1.5px solid var(--border2); border-radius:var(--rsm);
-  color:var(--text2); font-family:var(--H); font-size:.8rem; font-weight:700;
-  transition:all .15s;
-}
-.btn-ghost:hover { border-color:var(--accent); color:var(--accent); }
-.btn-ghost-full { width:100%; padding:.8rem; text-align:center; margin-top:.4rem; }
-
-
-
-
-/* ─── MANAGE CLASSES ────────────────────────────────────────── */
-.class-list { display:flex; flex-direction:column; gap:.4rem; margin-bottom:.75rem; }
-.class-row {
-  display:flex; align-items:center; gap:.5rem;
-  background:var(--bg3); border:1px solid var(--border);
-  border-radius:var(--rsm); padding:.55rem .75rem;
-}
-.class-row-name {
-  flex:1; font-size:.875rem; color:var(--text);
-  font-family:var(--B); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
-.class-row-edit {
-  background:none; border:1px solid var(--border2);
-  border-radius:6px; color:var(--text3);
-  font-size:.75rem; padding:.25rem .55rem;
-  transition:all .15s; flex-shrink:0;
-}
-.class-row-edit:hover { border-color:var(--accent); color:var(--accent); }
-.class-row-del {
-  background:none; border:1px solid transparent;
-  border-radius:6px; color:var(--text3);
-  font-size:.85rem; padding:.25rem .45rem;
-  transition:all .15s; flex-shrink:0; line-height:1;
-}
-.class-row-del:hover { border-color:var(--danger); color:var(--danger); }
-.class-edit-row {
-  display:none; gap:.4rem; align-items:center; margin-top:.25rem;
-}
-.class-edit-row.open { display:flex; }
-.class-edit-row input {
-  flex:1; background:var(--bg3);
-  border:1.5px solid var(--accent);
-  border-radius:var(--rsm); padding:.55rem .85rem;
-  color:var(--text); font-size:.875rem; outline:none;
-}
-.class-empty-note {
-  font-size:.8rem; color:var(--text3);
-  text-align:center; padding:.75rem 0;
-}
-
-/* ─── TOAST ─────────────────────────────────────────────────── */
-.toasts {
-  position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%);
-  z-index:400; display:flex; flex-direction:column; gap:.4rem;
-  pointer-events:none; width:calc(100% - 2rem); max-width:420px;
+/* ─── TOAST ──────────────────────────────────────────────────── */
+.toast-container {
+  position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 300;
+  display: flex; flex-direction: column; gap: .5rem; pointer-events: none;
 }
 .toast {
-  background:var(--bg3); border:1px solid var(--border2);
-  border-radius:var(--rsm); padding:.75rem 1rem;
-  font-size:.84rem; color:var(--text);
-  box-shadow:var(--shadow); display:flex; align-items:center; gap:.55rem;
-  transform:translateY(10px); opacity:0; transition:all .3s var(--ease);
+  display: flex; align-items: center; gap: .6rem;
+  padding: .75rem 1.1rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-lg);
+  font-size: .875rem; font-weight: 500; color: var(--ink);
+  min-width: 260px; max-width: 360px;
+  transform: translateX(120%); transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+  pointer-events: all;
 }
-.toast.show { transform:translateY(0); opacity:1; }
+.toast.show { transform: translateX(0); }
+.toast.success { border-left: 3px solid var(--success); }
+.toast.error   { border-left: 3px solid var(--danger); }
+.toast.warn    { border-left: 3px solid var(--warn); }
+.toast-icon { font-size: 1.1rem; flex-shrink: 0; }
+.toast-close {
+  margin-left: auto; background: none; border: none; cursor: pointer;
+  color: var(--ink-3); font-size: .9rem; padding: .2rem; line-height: 1;
+}
 
-/* ─── SPINNER ───────────────────────────────────────────────── */
-.spinner-wrap {
-  position:fixed; inset:0; z-index:300;
-  background:rgba(14,14,17,.85); backdrop-filter:blur(4px);
-  display:flex; flex-direction:column;
-  align-items:center; justify-content:center; gap:.85rem;
-  opacity:0; pointer-events:none; transition:opacity .25s;
+/* ─── EMPTY STATE ────────────────────────────────────────────── */
+.empty-state {
+  text-align: center; padding: 3rem 1.5rem; color: var(--ink-3);
 }
-.spinner-wrap.show { opacity:1; pointer-events:all; }
-.spinner {
-  width:32px; height:32px; border-radius:50%;
-  border:3px solid var(--border2); border-top-color:var(--accent);
-  animation:spin .7s linear infinite;
-}
-@keyframes spin { to{transform:rotate(360deg)} }
-.spinner-txt { font-family:var(--H); font-size:.8rem; color:var(--text3); letter-spacing:.04em; }
+.empty-state .icon { font-size: 2.5rem; margin-bottom: .75rem; }
+.empty-state p { font-size: .875rem; }
 
-::-webkit-scrollbar { width:4px; }
-::-webkit-scrollbar-track { background:transparent; }
-::-webkit-scrollbar-thumb { background:var(--border2); border-radius:99px; }
+/* ─── PRINT ──────────────────────────────────────────────────── */
+@media print {
+  .header, .nav-tabs, .table-controls, .form-panel, .action-btns,
+  .pagination, .quick-clock, .stats-grid, .btn, .modal-overlay { display: none !important; }
+  .tab-panel { display: block !important; }
+  body { background: #fff; }
+  table { font-size: .8rem; }
+}
+
+/* ─── RESPONSIVE ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .header-inner { padding: 0 1rem; }
+  .main { padding: 1rem; }
+  .quick-clock { grid-template-columns: 1fr; }
+  .chart-grid { grid-template-columns: 1fr; }
+  .chart-full { grid-column: 1; }
+  .form-grid { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .brand-sub { display: none; }
+}
+
+/* ─── ANIMATIONS ─────────────────────────────────────────────── */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.tab-panel.active { animation: fadeIn .2s ease; }
+.card { animation: fadeIn .25s ease; }
+
+/* ─── CLASS CHIP ─────────────────────────────────────────────── */
+.class-tag {
+  display: inline-block; padding: .2rem .65rem;
+  border-radius: 99px; font-size: .78rem; font-weight: 600;
+  background: var(--surface-3); color: var(--ink-2);
+}
+
+/* ─── REPORT ─────────────────────────────────────────────────── */
+/* ─── SESSION BANNER ─────────────────────────────────────────── */
+.session-banner {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  background: var(--success-bg);
+  border: 2px solid var(--success);
+  border-radius: var(--radius-lg);
+  padding: 1.1rem 1.4rem;
+  margin-bottom: 1.25rem;
+  animation: fadeIn .3s ease;
+  position: relative; overflow: hidden;
+}
+.session-pulse {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: var(--success);
+  animation: pulseLine 1.5s ease-in-out infinite;
+}
+@keyframes pulseLine { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+.session-info { flex: 1; min-width: 180px; }
+.session-label { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--success); margin-bottom: .15rem; }
+.session-class { font-family: var(--font-head); font-size: 1.15rem; color: var(--ink); margin-bottom: .15rem; }
+.session-meta { font-size: .82rem; color: var(--ink-2); }
+.session-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.session-start-card { border: 2px dashed var(--border); }
+.session-start-card:hover { border-color: var(--success); }
+.live-clock-display {
+  font-family: var(--font-head); font-size: 1.5rem;
+  color: var(--ink); letter-spacing: .02em;
+  background: var(--surface-3); border: 1px solid var(--border);
+  padding: .35rem .9rem; border-radius: var(--radius-sm);
+  min-width: 120px; text-align: center;
+}
+.or-divider {
+  display: flex; align-items: center; gap: 1rem;
+  margin: 1.25rem 0; color: var(--ink-3); font-size: .8rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+.report-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; }
+.month-selector { display: flex; align-items: center; gap: .5rem; }
+.report-table { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.report-total {
+  display: flex; justify-content: flex-end;
+  padding: .75rem 1rem;
+  border-top: 2px solid var(--border);
+  font-weight: 700; color: var(--ink); font-size: .9rem;
+  background: var(--surface-2);
+}
 </style>
 </head>
 <body>
+<div class="app-wrapper">
 
-<div class="app">
-
-  <!-- HEADER -->
-  <div class="header">
-    <div class="logo">Time<span>.</span>Log</div>
-    <div class="hdr-btns">
-      <button class="icon-btn" id="syncBtn" title="Sync" onclick="manualSync()" style="position:relative">↻<span id="queueBadge" style="display:none;position:absolute;top:3px;right:3px;width:7px;height:7px;background:var(--warn);border-radius:50%"></span></button>
-      <button class="icon-btn" title="Settings" onclick="openSettings()">⚙</button>
+<!-- ── HEADER ── -->
+<header class="header">
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-icon">⏱</div>
+      <div>
+        <div class="brand-title">Time Tracker</div>
+        <div class="brand-sub">Instructor Portal</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-icon" id="exportBtn" title="Export CSV">⬇</button>
+      <button class="btn-icon" id="printBtn" title="Print report">🖨</button>
+      <button class="btn-icon" id="darkToggle" title="Toggle dark mode">🌙</button>
     </div>
   </div>
+</header>
 
-  <!-- CONNECT HINT (shown when no URL saved) -->
-  <div class="hint-banner" id="hintBanner">
-    <div class="hint-text">
-      <strong>Connect Google Sheets</strong>
-      Tap to save your data to a spreadsheet
-    </div>
-    <button class="btn-hint" onclick="openSettings()">Connect</button>
-    <button class="hint-close" onclick="dismissHint()" aria-label="Dismiss">✕</button>
+<!-- ── NAV TABS ── -->
+<nav class="nav-tabs">
+  <div class="nav-tabs-inner">
+    <button class="tab-btn active" data-tab="log">📋 Log Entry</button>
+    <button class="tab-btn" data-tab="records">📊 Records</button>
+    <button class="tab-btn" data-tab="analytics">📈 Analytics</button>
+    <button class="tab-btn" data-tab="report">🗓 Monthly Report</button>
+    <button class="tab-btn" data-tab="settings">⚙ Settings</button>
   </div>
+</nav>
 
-  <!-- INSTALL BANNER -->
-  <div class="install-banner" id="installBanner">
-    <div class="install-text"><strong>Install as app</strong> — add to home screen</div>
-    <button class="btn-install" id="installBtn">Install</button>
-  </div>
+<!-- ── MAIN ── -->
+<main class="main">
 
-  <!-- TAB BAR -->
-  <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchTab('log',this)">Log Entry</button>
-    <button class="tab-btn"        onclick="switchTab('summary',this)">Summary</button>
-  </div>
-
-  <!-- ── LOG TAB ── -->
+  <!-- ═══ LOG ENTRY TAB ═══ -->
   <div class="tab-panel active" id="tab-log">
 
-    <div class="card">
-      <div class="card-lbl">New Entry</div>
-
-      <div class="field">
-        <label>Class</label>
-        <div style="display:flex;gap:.4rem">
-          <div class="sel-wrap" style="flex:1"><select id="fClass"></select></div>
-          <button type="button" class="btn-add" onclick="showAdd('f')" title="Add new class">＋</button>
+    <!-- ── ACTIVE SESSION BANNER (shown when clocked in) ── -->
+    <div id="activeSessionBanner" style="display:none">
+      <div class="session-banner">
+        <div class="session-pulse"></div>
+        <div class="session-info">
+          <div class="session-label">🟢 Class in Progress</div>
+          <div class="session-class" id="sessionClassName">—</div>
+          <div class="session-meta">
+            Clocked in <span id="sessionClockInTime">—</span> &nbsp;·&nbsp;
+            <span id="sessionElapsed" style="font-weight:700;color:var(--success)">0m</span> elapsed
+          </div>
         </div>
-        <div class="add-row" id="fAddRow">
-          <input type="text" id="fNewClass" placeholder="Class name…" maxlength="60">
-          <button class="btn-add" onclick="confirmAdd('f')">Add</button>
-          <button class="btn-x"   onclick="cancelAdd('f')">✕</button>
+        <div class="session-actions" style="display:flex;flex-direction:column;gap:.6rem;align-items:flex-end">
+          <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;justify-content:flex-end">
+            <div class="time-row" style="width:auto">
+              <input type="time" class="form-control" id="clockOutInput" style="width:120px">
+              <select class="form-control" id="clockOutAmPm" style="width:72px">
+                <option>AM</option><option>PM</option>
+              </select>
+            </div>
+            <button type="button" onclick="fillClockOutNow()" style="background:none;border:none;cursor:pointer;font-size:.78rem;color:var(--accent);font-weight:600;white-space:nowrap">Use current time ↗</button>
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-danger" id="clockOutNowBtn">🔴 Clock Out</button>
+            <button class="btn btn-secondary btn-sm" id="cancelSessionBtn">✕ Cancel</button>
+          </div>
         </div>
       </div>
+    </div>
 
-      <div class="field">
+    <!-- ── CLOCK IN CARD (shown when no active session) ── -->
+    <div id="clockInCard">
+      <div class="card session-start-card">
+        <div class="card-title"><span>🟢</span> Start a Session</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="sessionClass">Class Name</label>
+            <select class="form-control" id="sessionClass"></select>
+          </div>
+          <div class="form-group">
+            <label for="sessionDate">Date</label>
+            <input type="date" class="form-control" id="sessionDate">
+          </div>
+          <div class="form-group">
+            <label>Clock-In Time</label>
+            <div class="time-row">
+              <input type="time" class="form-control" id="sessionClockInInput">
+              <select class="form-control" id="sessionClockInAmPm">
+                <option>AM</option><option>PM</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.35rem;flex-wrap:wrap;gap:.25rem">
+              <small style="color:var(--ink-3);font-size:.78rem">Enter the time, then tap Clock In</small>
+              <button type="button" onclick="fillNowTime()" style="background:none;border:none;cursor:pointer;font-size:.78rem;color:var(--accent);font-weight:600;padding:0">Use current time ↗</button>
+            </div>
+          </div>
+          <div class="form-group" style="display:flex;flex-direction:column;justify-content:flex-end;gap:.5rem">
+            <div class="live-clock-display" id="liveClockDisplay">--:-- --</div>
+            <button class="btn btn-success" id="clockInNowBtn">🟢 Clock In</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ RECORDS TAB ═══ -->
+  <div class="tab-panel" id="tab-records">
+    <!-- Stats -->
+    <div class="stats-grid" id="statsRow"></div>
+
+    <div class="card">
+      <div class="table-controls">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="form-control" id="searchInput" placeholder="Search entries…">
+        </div>
+        <select class="form-control" id="filterClass" style="max-width:220px"></select>
+        <select class="form-control" id="sortSelect" style="max-width:160px">
+          <option value="date-desc">Date ↓</option>
+          <option value="date-asc">Date ↑</option>
+          <option value="class">Class A–Z</option>
+          <option value="hours-desc">Hours ↓</option>
+        </select>
+        <button class="btn btn-sm btn-secondary" id="refreshBtn">↻ Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Class</th>
+              <th>Date</th>
+              <th>Clock-In</th>
+              <th>Clock-Out</th>
+              <th>Duration</th>
+              <th>Notes</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="recordsBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <div class="pagination-info" id="paginationInfo"></div>
+        <div class="pagination-btns" id="paginationBtns"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ANALYTICS TAB ═══ -->
+  <div class="tab-panel" id="tab-analytics">
+    <div class="stats-grid" id="analyticsStats"></div>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title">📅 Hours per Week (Last 8 Weeks)</div>
+        <div class="chart-container"><canvas id="weeklyChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">📚 Hours per Class</div>
+        <div class="chart-container"><canvas id="classChart"></canvas></div>
+      </div>
+      <div class="chart-card chart-full">
+        <div class="chart-title">📆 Hours per Month</div>
+        <div class="chart-container"><canvas id="monthlyChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ MONTHLY REPORT TAB ═══ -->
+  <div class="tab-panel" id="tab-report">
+    <div class="card">
+      <div class="report-header">
+        <div class="card-title" style="margin:0"><span>🗓</span> Monthly Report</div>
+        <div class="month-selector">
+          <button class="btn btn-sm btn-secondary" id="prevMonth">‹</button>
+          <span id="reportMonthLabel" style="font-weight:600;min-width:130px;text-align:center"></span>
+          <button class="btn btn-sm btn-secondary" id="nextMonth">›</button>
+          <button class="btn btn-sm btn-secondary" id="printReportBtn">🖨 Print</button>
+        </div>
+      </div>
+      <div class="report-table">
+        <div class="table-wrap">
+          <table id="reportTable">
+            <thead>
+              <tr>
+                <th>Date</th><th>Class</th><th>Clock-In</th><th>Clock-Out</th>
+                <th>Hours</th><th>Decimal</th><th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="reportBody"></tbody>
+          </table>
+        </div>
+        <div class="report-total" id="reportTotal"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SETTINGS TAB ═══ -->
+  <div class="tab-panel" id="tab-settings">
+    <div class="card">
+      <div class="card-title"><span>📚</span> Manage Classes</div>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem">
+        <input type="text" class="form-control" id="newClassName" placeholder="New class name…" style="max-width:280px">
+        <button class="btn btn-primary btn-sm" id="addClassBtn">+ Add Class</button>
+      </div>
+      <div id="classList" style="display:flex;flex-wrap:wrap;gap:.5rem"></div>
+    </div>
+
+    <div class="card" style="margin-top:1rem">
+      <div class="card-title"><span>🔗</span> Google Sheets Integration</div>
+      <div class="form-group" style="max-width:480px;margin-bottom:1rem">
+        <label>Apps Script Web App URL</label>
+        <input type="url" class="form-control" id="sheetsUrl" placeholder="https://script.google.com/macros/s/…/exec">
+      </div>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" id="saveSheetUrl">💾 Save URL</button>
+        <button class="btn btn-secondary btn-sm" id="testSheetUrl">🧪 Test Connection</button>
+        <button class="btn btn-secondary btn-sm" id="syncBtn">🔄 Sync to Sheets</button>
+      </div>
+      <div id="sheetStatus" style="margin-top:.75rem;font-size:.8rem;color:var(--ink-3)"></div>
+
+      <!-- Setup Instructions -->
+      <details style="margin-top:1.5rem">
+        <summary style="cursor:pointer;font-weight:600;color:var(--ink-2);padding:.5rem 0">📖 Setup Instructions</summary>
+        <div style="margin-top:1rem;font-size:.85rem;line-height:1.8;color:var(--ink-2)">
+          <strong>Step 1 – Create Google Sheet</strong><br>
+          Open Google Sheets and create a new spreadsheet. Name it <em>Instructor Time Tracker</em>. Add these headers in row 1:
+          <code style="display:block;background:var(--surface-3);padding:.5rem .75rem;border-radius:6px;margin:.5rem 0;font-size:.8rem">Timestamp | Class Name | Date | Clock-In | Clock-Out | Total Hours | Notes</code>
+
+          <strong>Step 2 – Create Apps Script</strong><br>
+          In the sheet, go to <em>Extensions → Apps Script</em>. Replace all code with:
+          <pre style="background:var(--surface-3);padding:.75rem;border-radius:6px;overflow-x:auto;font-size:.78rem;margin:.5rem 0"><code>const SHEET_NAME = 'Sheet1';
+
+function doPost(e) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  const data = JSON.parse(e.postData.contents);
+
+  if (data.action === 'append') {
+    sheet.appendRow([
+      data.timestamp, data.className, data.date,
+      data.clockIn, data.clockOut, data.totalHours, data.notes
+    ]);
+    return response({status:'ok'});
+  }
+  if (data.action === 'getAll') {
+    const rows = sheet.getDataRange().getValues().slice(1);
+    return response({status:'ok', data: rows});
+  }
+  return response({status:'error', msg:'Unknown action'});
+}
+
+function response(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doGet(e) {
+  return response({status:'ok', msg:'Time Tracker API running'});
+}</code></pre>
+
+          <strong>Step 3 – Deploy</strong><br>
+          Click <em>Deploy → New Deployment</em>. Select <em>Web App</em>. Set <em>Execute as: Me</em> and <em>Who has access: Anyone</em>. Copy the Web App URL and paste it above.<br><br>
+
+          <strong>Step 4 – GitHub Pages</strong><br>
+          1. Create a new GitHub repository and push this <code>index.html</code> file.<br>
+          2. Go to repo <em>Settings → Pages</em>, set source to <em>main branch / root</em>.<br>
+          3. Your app will be live at <code>https://yourusername.github.io/repo-name</code>
+        </div>
+      </details>
+    </div>
+
+    <div class="card" style="margin-top:1rem">
+      <div class="card-title"><span>🗑</span> Data Management</div>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" id="exportBtnSettings">⬇ Export CSV</button>
+        <button class="btn btn-danger btn-sm" id="clearAllBtn">🗑 Clear All Local Data</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- ─── EDIT MODAL ─────────────────────────────────────────────── -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Edit Entry</div>
+      <button class="btn-icon" id="closeEditModal">✕</button>
+    </div>
+    <div class="form-grid">
+      <input type="hidden" id="editId">
+      <div class="form-group">
+        <label>Class Name</label>
+        <select class="form-control" id="editClassName"></select>
+      </div>
+      <div class="form-group">
         <label>Date</label>
-        <input type="date" id="fDate">
+        <input type="date" class="form-control" id="editDate">
       </div>
-
-      <div class="field">
-        <label>Clock-in time</label>
-        <div class="time-pick">
-          <div class="sel-wrap"><select id="fHr"></select></div>
-          <div class="sel-wrap"><select id="fMin"></select></div>
-          <div class="ampm-toggle">
-            <button class="ampm-btn on" id="fAM" onclick="setAP('f','AM')">AM</button>
-            <button class="ampm-btn"    id="fPM" onclick="setAP('f','PM')">PM</button>
-          </div>
+      <div class="form-group">
+        <label>Clock-In</label>
+        <div class="time-row">
+          <input type="time" class="form-control" id="editClockIn">
+          <select class="form-control" id="editClockInAmPm"><option>AM</option><option>PM</option></select>
         </div>
       </div>
-
-      <button class="btn-submit" onclick="saveEntry()">Save entry</button>
-    </div>
-
-    <div class="list-hdr">
-      <div class="card-lbl">Your log</div>
-      <div class="list-count" id="listCount"></div>
-    </div>
-    <div class="entries"    id="entriesList"></div>
-    <div class="pagination" id="pagination">
-      <span class="pg-info" id="pgInfo"></span>
-      <div  class="pg-btns" id="pgBtns"></div>
-    </div>
-
-  </div><!-- /tab-log -->
-
-  <!-- ── SUMMARY TAB ── -->
-  <div class="tab-panel" id="tab-summary">
-    <div class="card">
-      <div class="card-lbl">Date Range</div>
-      <div class="range-grid">
-        <div class="field"><label>From</label><input type="date" id="rFrom"></div>
-        <div class="field"><label>To</label>  <input type="date" id="rTo"></div>
-      </div>
-      <div class="field">
-        <label>Class <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
-        <div class="sel-wrap"><select id="rClass"></select></div>
-      </div>
-      <button class="btn-calc" onclick="calcSummary()">Calculate Hours</button>
-      <div class="result" id="result">
-        <div class="result-total">
-          <div>
-            <div class="res-lbl">Total hours</div>
-            <div class="res-big" id="rTotal">—</div>
-            <div class="res-dec" id="rDec"></div>
-          </div>
-          <div style="text-align:right">
-            <div class="res-lbl">Sessions</div>
-            <div class="res-sessions" id="rCount">—</div>
-          </div>
-        </div>
-        <div class="warn-note" id="rWarn" style="display:none">⚠ Some entries missing clock-out — excluded.</div>
-        <div class="bk-lbl">Breakdown</div>
-        <div id="rBreakdown"></div>
-      </div>
-    </div>
-  </div><!-- /tab-summary -->
-
-</div><!-- /.app -->
-
-<!-- EDIT SHEET -->
-<div class="overlay" id="editOverlay">
-  <div class="sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-title" id="editTitle">Edit entry</div>
-    <div class="sheet-sub"   id="editSub"></div>
-
-    <div class="field">
-      <label>Class</label>
-      <div style="display:flex;gap:.4rem">
-        <div class="sel-wrap" style="flex:1"><select id="mClass"></select></div>
-        <button type="button" class="btn-add" onclick="showAdd('m')" title="Add new class">＋</button>
-      </div>
-      <div class="add-row" id="mAddRow">
-        <input type="text" id="mNewClass" placeholder="Class name…" maxlength="60">
-        <button class="btn-add" onclick="confirmAdd('m')">Add</button>
-        <button class="btn-x"   onclick="cancelAdd('m')">✕</button>
-      </div>
-    </div>
-    <div class="field"><label>Date</label><input type="date" id="mDate"></div>
-    <div class="field">
-      <label>Clock-in</label>
-      <div class="time-pick">
-        <div class="sel-wrap"><select id="mInHr"></select></div>
-        <div class="sel-wrap"><select id="mInMin"></select></div>
-        <div class="ampm-toggle">
-          <button class="ampm-btn on" id="mInAM" onclick="setAP('mIn','AM')">AM</button>
-          <button class="ampm-btn"    id="mInPM" onclick="setAP('mIn','PM')">PM</button>
+      <div class="form-group">
+        <label>Clock-Out</label>
+        <div class="time-row">
+          <input type="time" class="form-control" id="editClockOut">
+          <select class="form-control" id="editClockOutAmPm"><option>AM</option><option>PM</option></select>
         </div>
       </div>
-    </div>
-
-    <div class="sheet-div"></div>
-
-    <div class="field">
-      <label>Clock-out <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0">(add when class ends)</span></label>
-      <div class="time-pick">
-        <div class="sel-wrap"><select id="mOutHr"></select></div>
-        <div class="sel-wrap"><select id="mOutMin"></select></div>
-        <div class="ampm-toggle">
-          <button class="ampm-btn on" id="mOutAM" onclick="setAP('mOut','AM')">AM</button>
-          <button class="ampm-btn"    id="mOutPM" onclick="setAP('mOut','PM')">PM</button>
-        </div>
+      <div class="form-group full">
+        <label>Notes</label>
+        <textarea class="form-control" id="editNotes" rows="2"></textarea>
       </div>
     </div>
-
-    <div class="dur-preview" id="durPreview">
-      <span>⏱</span>
-      <span class="dur-main" id="durMain"></span>
-      <span class="dur-dec"  id="durDec"></span>
-    </div>
-
-    <div class="sheet-btns">
-      <button class="btn-cancel" onclick="closeEdit()">Cancel</button>
-      <button class="btn-save"   onclick="saveEdit()">Save changes</button>
-    </div>
-    <button class="btn-delete" onclick="deleteEntry()">Delete entry</button>
-  </div>
-</div>
-
-<!-- SETTINGS SHEET -->
-<div class="overlay" id="settingsOverlay">
-  <div class="sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-title">Settings</div>
-    <div class="sheet-sub">Manage connection &amp; classes</div>
-
-
-
-    <!-- Actions -->
-    <div style="margin-bottom:1.5rem">
-      <div class="setting-lbl">Data</div>
-      <button class="btn-ghost btn-ghost-full" onclick="closeSettings();manualSync()">↻ Sync from Google Sheets</button>
-    </div>
-
-    <!-- Manage Classes -->
-    <div style="margin-bottom:1.5rem">
-      <div class="setting-lbl">Classes</div>
-      <div class="class-list" id="settingsClassList"></div>
-      <!-- Shared rename input -->
-      <div class="class-edit-row" id="renameRow" style="margin-bottom:.5rem">
-        <input type="text" id="renameInput" placeholder="New name…" maxlength="60">
-        <button class="btn-add" onclick="confirmRename()">Save</button>
-        <button class="btn-x"   onclick="cancelRename()">✕</button>
-      </div>
-      <!-- Add new class -->
-      <div class="class-edit-row" id="settingsAddRow">
-        <input type="text" id="settingsNewClass" placeholder="New class name…" maxlength="60">
-        <button class="btn-add" onclick="settingsConfirmAdd()">Add</button>
-        <button class="btn-x"   onclick="settingsCancelAdd()">✕</button>
-      </div>
-      <button class="btn-ghost btn-ghost-full" style="margin-top:.4rem" onclick="settingsShowAdd()">＋ Add new class</button>
-    </div>
-
-    <div style="margin-top:1.25rem">
-      <button class="btn-cancel" style="width:100%" onclick="closeSettings()">Close</button>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="cancelEdit">Cancel</button>
+      <button class="btn btn-primary" id="saveEdit">💾 Save Changes</button>
     </div>
   </div>
 </div>
 
-<!-- SPINNER -->
-<div class="spinner-wrap" id="spinnerWrap">
-  <div class="spinner"></div>
-  <div class="spinner-txt" id="spinnerTxt">Syncing…</div>
-</div>
-
-<!-- TOASTS -->
-<div class="toasts" id="toasts"></div>
+<!-- ─── TOAST CONTAINER ───────────────────────────────────────── -->
+<div class="toast-container" id="toastContainer"></div>
 
 <script>
-/* -------------------------------------------
-   CONSTANTS & STATE
-------------------------------------------- */
-const K = { classes:'tt_classes', cache:'tt_cache', hint:'tt_hint', queue:'tt_queue' };
+/* ═══════════════════════════════════════════════════════════════
+   INSTRUCTOR TIME TRACKER — FULL APPLICATION LOGIC
+═══════════════════════════════════════════════════════════════ */
 
-const PAGE_SIZE = 5;
-const HOURS = Array.from({length:12},(_,i)=>String(i+1));
-const MINS  = Array.from({length:60},(_,i)=>String(i).padStart(2,'0'));
+// ── STATE ──────────────────────────────────────────────────────
+const STORAGE_KEYS = { entries: 'itt_entries', classes: 'itt_classes', draft: 'itt_draft', sheetsUrl: 'itt_sheetsUrl', theme: 'itt_theme' };
 
-let classes   = [];
-let entries   = [];
-let editingId = null;
-let page      = 1;
-let deferredInstall = null;
+let state = {
+  entries: [],
+  classes: ['MOS (F to F) May 2026', 'MOS (Online) July 2026'],
+  sheetsUrl: '',
+  page: 1,
+  pageSize: 10,
+  searchTerm: '',
+  filterClass: '',
+  sortBy: 'date-desc',
+  editingId: null,
+  reportMonth: new Date(),
+  charts: {},
+  theme: 'light',
+  activeSession: null  // { id, className, date, clockIn (HH:MM 24h), clockInISO }
+};
 
-/* -------------------------------------------
-   HELPERS
-------------------------------------------- */
-const $ = id => document.getElementById(id);
-const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby2dvlWPwB06GVZUVVabyh485EGkRpqsBMMTy3wn4NUD-cc80t-7pHqI1yX5tRDeK4/exec';
-function getUrl() { return SCRIPT_URL; }
-
-function cacheEntries() { localStorage.setItem(K.cache,JSON.stringify(entries)); }
-function loadCache()    { try{return JSON.parse(localStorage.getItem(K.cache)||'[]');}catch{return[];} }
-function saveClasses()  { localStorage.setItem(K.classes,JSON.stringify(classes)); }
-function loadClasses()  { try{const c=localStorage.getItem(K.classes);return c?JSON.parse(c):[];}catch{return[];} }
-
-function today() { return new Date().toISOString().split('T')[0]; }
-function parseDate(d) {
-  if(!d) return null;
-  // Already YYYY-MM-DD
-  if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Date(d + 'T00:00:00');
-  // Try parsing as-is (handles Date.toString() format from Sheets)
-  const dt = new Date(d);
-  return isNaN(dt) ? null : dt;
+// ── PERSISTENCE ────────────────────────────────────────────────
+function save() {
+  localStorage.setItem(STORAGE_KEYS.entries, JSON.stringify(state.entries));
+  localStorage.setItem(STORAGE_KEYS.classes, JSON.stringify(state.classes));
+  localStorage.setItem(STORAGE_KEYS.sheetsUrl, state.sheetsUrl);
+  localStorage.setItem(STORAGE_KEYS.theme, state.theme);
+  if (state.activeSession)
+    localStorage.setItem(STORAGE_KEYS.activeSession, JSON.stringify(state.activeSession));
+  else
+    localStorage.removeItem(STORAGE_KEYS.activeSession);
 }
-function fmtDate(d) {
-  const dt = parseDate(d);
-  if(!dt) return '';
-  return dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-}
-function normaliseDate(d) {
-  // Convert any date format to YYYY-MM-DD for storage/sorting
-  const dt = parseDate(d);
-  if(!dt) return d;
-  const y = dt.getFullYear();
-  const m = String(dt.getMonth()+1).padStart(2,'0');
-  const day = String(dt.getDate()).padStart(2,'0');
-  return `${y}-${m}-${day}`;
-}
-
-function to24(hr,min,ap) {
-  let h=parseInt(hr);
-  if(ap==='PM'&&h<12) h+=12;
-  if(ap==='AM'&&h===12) h=0;
-  return `${String(h).padStart(2,'0')}:${min}`;
-}
-function to12(t24) {
-  if(!t24) return {hr:'12',min:'00',ap:'AM'};
-  let [h,m]=t24.split(':').map(Number);
-  const ap=h>=12?'PM':'AM'; h=h%12||12;
-  return {hr:String(h),min:String(m).padStart(2,'0'),ap};
-}
-// Convert any time value from Sheets/storage into clean HH:MM string
-function toHHMM(val) {
-  if(val === null || val === undefined || val === '') return '';
-  // Numeric decimal fraction from Sheets (e.g. 0.708333 = 17:00)
-  if(typeof val === 'number') {
-    const totalMins = Math.round(val * 24 * 60);
-    const h = Math.floor(totalMins / 60) % 24;
-    const m = totalMins % 60;
-    return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
-  }
-  const s = String(val).trim();
-  if(!s || s === 'undefined' || s === 'null') return '';
-  // Already clean HH:MM or HH:MM:SS
-  if(/^\d{1,2}:\d{2}/.test(s)) return s.slice(0,5);
-  // Numeric string — decimal fraction
-  if(s.indexOf(':') === -1) {
-    const num = parseFloat(s);
-    if(!isNaN(num) && num >= 0 && num < 1) {
-      const totalMins = Math.round(num * 24 * 60);
-      const h = Math.floor(totalMins / 60) % 24;
-      const m = totalMins % 60;
-      return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
-    }
-    return '';
-  }
-  // Date string like "Sat Dec 30 1899 17:00:00 GMT+0000" — extract HH:MM
-  const match = s.match(/(\d{1,2}):(\d{2})(?::\d{2})?/);
-  if(match) return String(match[1]).padStart(2,'0') + ':' + match[2];
-  return '';
-}
-function fmt12(val) {
-  const t = toHHMM(val);
-  if(!t) return null;
-  const {hr,min,ap} = to12(t);
-  if(!hr || !min || min === 'NaN') return null;
-  return `${hr}:${min} ${ap}`;
-}
-function calcDur(inT,outT) {
-  if(!inT||!outT) return null;
-  const a=toHHMM(inT), b=toHHMM(outT);
-  if(!a||!b) return null;
-  const [ih,im]=a.split(':').map(Number);
-  const [oh,om]=b.split(':').map(Number);
-  if(isNaN(ih)||isNaN(im)||isNaN(oh)||isNaN(om)) return null;
-  const diff=(oh*60+om)-(ih*60+im);
-  if(diff<=0) return null;
-  const h=Math.floor(diff/60),m=diff%60;
-  return {label:m===0?`${h}h`:`${h}h ${m}m`,dec:(diff/60).toFixed(2)};
-}
-
-/* -------------------------------------------
-   TIME PICKER
-------------------------------------------- */
-function buildPicker(pfx) {
-  const h=$(pfx+'Hr'),m=$(pfx+'Min'); if(!h||!m)return;
-  h.innerHTML=HOURS.map(v=>`<option>${v}</option>`).join('');
-  m.innerHTML=MINS.map(v=>`<option>${v}</option>`).join('');
-}
-function setAP(pfx,val) {
-  $(pfx+'AM').classList.toggle('on',val==='AM');
-  $(pfx+'PM').classList.toggle('on',val==='PM');
-  if(pfx==='mIn'||pfx==='mOut') refreshDurPreview();
-}
-function getAP(pfx) { return $(pfx+'AM').classList.contains('on')?'AM':'PM'; }
-function getT(pfx) {
-  const h=$(pfx+'Hr'),m=$(pfx+'Min');
-  if(!h||!h.value) return '';
-  return to24(h.value,m.value,getAP(pfx));
-}
-function setT(pfx,val) {
-  const t24 = toHHMM(val);
-  if(!t24){resetPicker(pfx);return;}
-  const {hr,min,ap}=to12(t24);
-  $(pfx+'Hr').value=hr; $(pfx+'Min').value=min; setAP(pfx,ap);
-}
-function resetPicker(pfx) {
-  $(pfx+'Hr').selectedIndex=0; $(pfx+'Min').selectedIndex=0; setAP(pfx,'AM');
-}
-
-/* -------------------------------------------
-   SHEETS API
-------------------------------------------- */
-async function apiGetAll() {
-  const url=getUrl(); if(!url) throw new Error('No URL');
-  const r=await fetch(url+'?action=getAll', { redirect:'follow', cache:'no-store' });
-  if(!r.ok) throw new Error('HTTP ' + r.status);
-  const d=await r.json(); if(d.error) throw new Error(d.error);
-  return d; // returns { entries:[], classes:[] }
-}
-/* -------------------------------------------
-   OFFLINE QUEUE
-------------------------------------------- */
-function loadQueue()  { try{ return JSON.parse(localStorage.getItem(K.queue)||'[]'); }catch{ return []; } }
-function saveQueue(q) { localStorage.setItem(K.queue, JSON.stringify(q)); }
-
-function enqueue(body) {
-  const q = loadQueue();
-  q.push({ body, ts: Date.now() });
-  saveQueue(q);
-}
-
-async function flushQueue() {
-  const url = getUrl(); if(!url) return;
-  const q = loadQueue(); if(!q.length) return;
-  const failed = [];
-  for(const item of q) {
-    try {
-      const params = encodeURIComponent(JSON.stringify(item.body));
-      await fetch(url + '?payload=' + params, { redirect:'follow', cache:'no-store' });
-    } catch {
-      failed.push(item);
-    }
-  }
-  saveQueue(failed);
-  if(failed.length < q.length) {
-    const synced = q.length - failed.length;
-    toast(`Synced ${synced} offline change${synced!==1?'s':''}`, '☁️');
-    // After flushing writes, pull fresh data from sheet
-    try {
-      const data = await apiGetAll();
-      entries = (data.entries||[]).filter(r=>r.id).map(r=>({
-        ...r,
-        date:     normaliseDate(r.date),
-        clockIn:  toHHMM(r.clockIn),
-        clockOut: toHHMM(r.clockOut)
-      }));
-      cacheEntries();
-      if(data.classes&&data.classes.length){ classes=data.classes; saveClasses(); populateSelects(); }
-      renderEntries();
-    } catch { /* use local data */ }
-  }
-}
-
-async function apiPost(body) {
-  const url = getUrl(); if(!url) return;
-  if(!navigator.onLine) {
-    enqueue(body);
-    return;
-  }
+function load() {
   try {
-    const encoded = encodeURIComponent(JSON.stringify(body));
-    await fetch(url + '?payload=' + encoded, { redirect:'follow', cache:'no-store' });
-  } catch {
-    enqueue(body);
-  }
+    const e = localStorage.getItem(STORAGE_KEYS.entries);
+    if (e) state.entries = JSON.parse(e);
+    const c = localStorage.getItem(STORAGE_KEYS.classes);
+    if (c) state.classes = JSON.parse(c);
+    const u = localStorage.getItem(STORAGE_KEYS.sheetsUrl);
+    if (u) state.sheetsUrl = u;
+    const t = localStorage.getItem(STORAGE_KEYS.theme);
+    if (t) state.theme = t;
+    const s = localStorage.getItem(STORAGE_KEYS.activeSession);
+    if (s) state.activeSession = JSON.parse(s);
+  } catch {}
+}
+function saveDraft() {
+  const d = {
+    className: $('className').value,
+    date: $('entryDate').value,
+    clockIn: $('clockIn').value,
+    clockInAmPm: $('clockInAmPm').value,
+    clockOut: $('clockOut').value,
+    clockOutAmPm: $('clockOutAmPm').value,
+    notes: $('notes').value
+  };
+  localStorage.setItem(STORAGE_KEYS.draft, JSON.stringify(d));
+}
+function loadDraft() {
+  try {
+    const d = localStorage.getItem(STORAGE_KEYS.draft);
+    if (!d) return;
+    const o = JSON.parse(d);
+    if (o.className) $('className').value = o.className;
+    if (o.date) $('entryDate').value = o.date;
+    if (o.clockIn) $('clockIn').value = o.clockIn;
+    if (o.clockInAmPm) $('clockInAmPm').value = o.clockInAmPm;
+    if (o.clockOut) $('clockOut').value = o.clockOut;
+    if (o.clockOutAmPm) $('clockOutAmPm').value = o.clockOutAmPm;
+    if (o.notes) $('notes').value = o.notes;
+  } catch {}
 }
 
-// Listen for connection restored → flush queue
-window.addEventListener('online', () => {
-  const q = loadQueue();
-  if(q.length) {
-    toast(`Back online — syncing ${q.length} pending change${q.length!==1?'s':''}…`, '📶');
-    setTimeout(flushQueue, 1500); // small delay to let connection stabilise
-  }
-});
+// ── HELPERS ────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
 
-/* -------------------------------------------
-   CLASSES
-------------------------------------------- */
-function populateSelects(active) {
-  ['fClass','mClass','rClass'].forEach(id=>{
-    const el=$(id); if(!el) return;
-    const prev=active||el.value;
-    el.innerHTML=(id==='rClass'?'<option value="">All classes</option>':'')+
-      (classes.length
-        ? classes.map(cl=>`<option value="${cl}">${cl}</option>`).join('')
-        : '<option value="" disabled>No classes yet — tap ＋ to add</option>');
-    if(prev) el.value=prev;
+function formatTime12(time24) {
+  if (!time24) return '';
+  const [h, m] = time24.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2,'0')} ${period}`;
+}
+function to24h(time12, ampm) {
+  if (!time12) return '';
+  let [h, m] = time12.split(':').map(Number);
+  if (ampm === 'PM' && h < 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+function calcDuration(inTime, outTime) {
+  if (!inTime || !outTime) return null;
+  const [ih, im] = inTime.split(':').map(Number);
+  const [oh, om] = outTime.split(':').map(Number);
+  const diff = (oh * 60 + om) - (ih * 60 + im);
+  if (diff <= 0) return null;
+  const hrs = Math.floor(diff / 60);
+  const mins = diff % 60;
+  const decimal = Math.round(diff / 60 * 100) / 100;
+  return { hrs, mins, decimal, label: `${hrs}h ${mins}m`, decimalLabel: `${decimal} hrs` };
+}
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+}
+function nowDate() {
+  return new Date().toISOString().split('T')[0];
+}
+function nowTime() {
+  const n = new Date();
+  return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+}
+function nowAmPm() {
+  return new Date().getHours() >= 12 ? 'PM' : 'AM';
+}
+function getWeekNumber(d) {
+  const date = new Date(d + 'T00:00:00');
+  date.setHours(0,0,0,0);
+  date.setDate(date.getDate() + 3 - (date.getDay()+6)%7);
+  const week1 = new Date(date.getFullYear(),0,4);
+  return 1 + Math.round(((date-week1)/86400000 - 3 + (week1.getDay()+6)%7)/7);
+}
+
+// ── TOAST ──────────────────────────────────────────────────────
+function toast(msg, type = 'success') {
+  const icons = { success: '✅', error: '❌', warn: '⚠️' };
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span class="toast-icon">${icons[type]||'ℹ️'}</span><span>${msg}</span><button class="toast-close" onclick="this.parentElement.remove()">✕</button>`;
+  $('toastContainer').appendChild(t);
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3500);
+}
+
+// ── CLASS SELECTS ──────────────────────────────────────────────
+function renderClassSelects() {
+  const selects = ['sessionClass','editClassName','filterClass'];
+  selects.forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    const prev = el.value;
+    el.innerHTML = id === 'filterClass' ? '<option value="">All Classes</option>' : '';
+    state.classes.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c; o.textContent = c;
+      el.appendChild(o);
+    });
+    if (prev) el.value = prev;
+  });
+  renderClassList();
+}
+function renderClassList() {
+  const ul = $('classList');
+  if (!ul) return;
+  ul.innerHTML = '';
+  state.classes.forEach((c, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'class-tag';
+    chip.style.cursor = 'pointer';
+    chip.innerHTML = `${c} <span style="margin-left:.4rem;cursor:pointer;color:var(--danger)" data-del="${i}">✕</span>`;
+    chip.querySelector('[data-del]').addEventListener('click', () => {
+      if (state.classes.length <= 1) { toast('Keep at least one class', 'warn'); return; }
+      state.classes.splice(i, 1);
+      save(); renderClassSelects(); toast('Class removed');
+    });
+    ul.appendChild(chip);
   });
 }
-function showAdd(pfx) { const r=$(pfx+'AddRow'),i=$(pfx+'NewClass'); r.classList.add('open'); i.value=''; i.focus(); }
-function cancelAdd(pfx) { $(pfx+'AddRow').classList.remove('open'); }
-async function confirmAdd(pfx) {
-  const inp=$(pfx+'NewClass'), name=inp.value.trim();
-  if(!name){inp.focus();return;}
-  if(classes.includes(name)){toast('Class already exists','⚠️');inp.focus();return;}
-  classes.push(name); saveClasses(); populateSelects(name); cancelAdd(pfx);
-  const other=pfx==='f'?'mClass':'fClass';
-  const oel=$(other); if(oel) oel.value=name;
-  toast(`"${name}" added`,'✅');
-  // Sync new class to Google Sheets immediately
-  try{ await apiPost({action:'addClass', name}); }
-  catch{ /* silently ignore — local is already saved */ }
-}
 
-/* -------------------------------------------
-   RENDER ENTRIES
-------------------------------------------- */
-function renderEntries() {
-  const sorted=[...entries].sort((a,b)=>
-    b.date!==a.date?b.date.localeCompare(a.date):(b.clockIn||'').localeCompare(a.clockIn||''));
-  const total=sorted.length;
-  $('listCount').textContent=total?`${total} session${total!==1?'s':''}`:'' ;
-  const totalPages=Math.max(1,Math.ceil(total/PAGE_SIZE));
-  if(page>totalPages) page=totalPages;
-  const start=(page-1)*PAGE_SIZE;
-  const slice=sorted.slice(start,start+PAGE_SIZE);
-  const list=$('entriesList');
-
-  if(!total){
-    list.innerHTML=`<div class="empty"><div class="empty-icon">🕐</div><div class="empty-txt">No entries yet.<br>Log your first clock-in above.</div></div>`;
-    $('pagination').classList.remove('show'); return;
-  }
-
-  list.innerHTML=slice.map((e,i)=>{
-    const d=calcDur(e.clockIn,e.clockOut), done=!!e.clockOut;
-    return `<div class="entry ${done?'done':'pending'}" style="animation-delay:${i*35}ms">
-      <div class="entry-main" onclick="openEdit('${e.id}')">
-        <div class="entry-top-row">
-          <div class="entry-left">
-            <div class="entry-class">${e.className}</div>
-            <div class="entry-date">${fmtDate(e.date)}</div>
-          </div>
-          <span class="badge ${done?'done':'pending'}">${done?'Complete':'No clock-out'}</span>
-        </div>
-        <div class="entry-bottom-row">
-          <div class="t-val">${fmt12(e.clockIn)||'—'}</div>
-          <div class="t-arrow">→</div>
-          <div class="t-val ${!done?'no-time':''}">${fmt12(e.clockOut)||'—'}</div>
-          ${d?`<div class="dur">${d.label}<small>${d.dec}h</small></div>`:''}
-        </div>
-      </div>
-      <div class="entry-right">
-        <button class="entry-del" onclick="quickDelete('${e.id}')" title="Delete">✕</button>
-      </div>
-    </div>`;
-  }).join('');
-
-  if(totalPages<=1){$('pagination').classList.remove('show');return;}
-  $('pagination').classList.add('show');
-  $('pgInfo').textContent=`${start+1}–${Math.min(start+PAGE_SIZE,total)} of ${total}`;
-  const pb=$('pgBtns'); pb.innerHTML='';
-  const prev=document.createElement('button');
-  prev.className='pg-btn'; prev.textContent='‹'; prev.disabled=page===1;
-  prev.onclick=()=>{page--;renderEntries();scrollTo(0,0);}; pb.appendChild(prev);
-  for(let p=1;p<=totalPages;p++){
-    const b=document.createElement('button');
-    b.className='pg-btn'+(p===page?' on':''); b.textContent=p;
-    b.onclick=(pp=>()=>{page=pp;renderEntries();scrollTo(0,0);})(p); pb.appendChild(b);
-  }
-  const next=document.createElement('button');
-  next.className='pg-btn'; next.textContent='›'; next.disabled=page===totalPages;
-  next.onclick=()=>{page++;renderEntries();scrollTo(0,0);}; pb.appendChild(next);
-}
-
-/* -------------------------------------------
-   SAVE ENTRY
-------------------------------------------- */
-async function saveEntry() {
-  const cls=$('fClass').value, date=$('fDate').value, clockIn=getT('f');
-  if(!cls)    {toast('Pick a class','⚠️');return;}
-  if(!date)   {toast('Pick a date','⚠️');return;}
-  if(!clockIn){toast('Set clock-in time','⚠️');return;}
-  const entry={id:uid(),className:cls,date,clockIn,clockOut:'',createdAt:new Date().toISOString()};
-  entries.push(entry); cacheEntries(); page=1; renderEntries();
-  toast('Entry saved — add clock-out when class ends','✅');
-  resetPicker('f');
-  try{await apiPost({action:'add',entry});}
-  catch{ } finally{ updateQueueBadge(); }
-}
-
-/* -------------------------------------------
-   EDIT SHEET
-------------------------------------------- */
-function refreshDurPreview() {
-  const inT=getT('mIn'), outT=getT('mOut'), d=calcDur(inT,outT);
-  const p=$('durPreview');
-  if(d){$('durMain').textContent=d.label;$('durDec').textContent=`(${d.dec} hrs)`;p.classList.add('show');}
-  else{p.classList.remove('show');}
-}
-function openEdit(id) {
-  const e=entries.find(x=>x.id===id); if(!e) return;
-  editingId=id;
-  populateSelects(e.className);
-  $('mClass').value=e.className;
-  $('mDate').value=e.date;
-  setT('mIn',e.clockIn);
-  e.clockOut?setT('mOut',e.clockOut):resetPicker('mOut');
-  $('editTitle').textContent=e.clockOut?'Edit entry':'Add clock-out';
-  $('editSub').textContent=`${e.className} · ${fmtDate(e.date)}`;
-  refreshDurPreview();
-  $('editOverlay').classList.add('open');
-}
-function closeEdit() { $('editOverlay').classList.remove('open'); editingId=null; }
-async function saveEdit() {
-  if(!editingId) return;
-  const e=entries.find(x=>x.id===editingId); if(!e) return;
-  const clockIn=getT('mIn');
-  if(!clockIn){toast('Clock-in time required','⚠️');return;}
-  const outHr=$('mOutHr').value, clockOut=outHr?getT('mOut'):'';
-  if(clockOut&&!calcDur(clockIn,clockOut)){toast('Clock-out must be after clock-in','⚠️');return;}
-  e.className=$('mClass').value; e.date=$('mDate').value;
-  e.clockIn=clockIn; e.clockOut=clockOut;
-  cacheEntries(); renderEntries(); closeEdit();
-  const d=calcDur(clockIn,clockOut);
-  toast(d?`${d.label} · ${d.dec} hrs logged`:'Entry updated','✅');
-  try{await apiPost({action:'update',entry:e});}
-  catch{ } finally{ updateQueueBadge(); }
-}
-async function quickDelete(id) {
-  if(!confirm('Delete this entry?')) return;
-  entries = entries.filter(x => x.id !== id);
-  cacheEntries(); renderEntries();
-  toast('Entry deleted','🗑');
-  try { await apiPost({ action:'delete', id }); }
-  catch { } finally { updateQueueBadge(); }
-}
-
-async function deleteEntry() {
-  if(!editingId) return;
-  if(!confirm('Delete this entry?')) return;
-  const id=editingId;
-  entries=entries.filter(x=>x.id!==id); cacheEntries(); page=1; renderEntries(); closeEdit();
-  toast('Entry deleted','🗑');
-  try{await apiPost({action:'delete',id});}
-  catch{toast('Deleted locally — sync failed','⚠️');}
-}
-
-/* -------------------------------------------
-   SUMMARY
-------------------------------------------- */
-function calcSummary() {
-  const from=$('rFrom').value, to=$('rTo').value, cls=$('rClass').value;
-  if(!from||!to){toast('Pick a date range','⚠️');return;}
-  if(from>to){toast('"From" must be before "To"','⚠️');return;}
-  const filtered=entries.filter(e=>e.date>=from&&e.date<=to&&(!cls||e.className===cls));
-  const complete=filtered.filter(e=>e.clockOut);
-  const missing=filtered.filter(e=>!e.clockOut);
-  const mins=complete.reduce((s,e)=>{
-    const [ih,im]=e.clockIn.split(':').map(Number);
-    const [oh,om]=e.clockOut.split(':').map(Number);
-    return s+(oh*60+om)-(ih*60+im);
-  },0);
-  const h=Math.floor(mins/60),m=mins%60;
-  $('rTotal').textContent=m===0?`${h}h`:`${h}h ${m}m`;
-  $('rDec').textContent=`${(mins/60).toFixed(2)} hrs`;
-  $('rCount').textContent=complete.length;
-  $('rWarn').style.display=missing.length?'flex':'none';
-  $('rBreakdown').innerHTML=!complete.length
-    ?`<div class="res-empty">No completed entries in this range.</div>`
-    :[...complete].sort((a,b)=>a.date.localeCompare(b.date)).map(e=>{
-        const d=calcDur(e.clockIn,e.clockOut);
-        return `<div class="bk-row"><div><div class="bk-class">${e.className}</div><div class="bk-date">${fmtDate(e.date)}</div></div><div class="bk-dur">${d?d.label:'—'}${d?`<small>${d.dec} hrs</small>`:''}</div></div>`;
-      }).join('');
-  $('result').classList.add('show');
-}
-
-/* -------------------------------------------
-   TABS
-------------------------------------------- */
-function switchTab(name,btn) {
-  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  $('tab-'+name).classList.add('active');
-  if(btn) btn.classList.add('active');
-  if(name==='summary') populateSelects();
-}
-
-/* -------------------------------------------
-   HINT BANNER
-------------------------------------------- */
-function updateHintBanner() {
-  // URL is hardcoded — always hide hint banner
-  $('hintBanner').classList.add('hidden');
-}
-function dismissHint() { $('hintBanner').classList.add('hidden'); }
-
-/* -------------------------------------------
-   SETTINGS — MANAGE CLASSES
-------------------------------------------- */
-let renamingIndex = null;
-
-function renderSettingsClasses() {
-  const list = $('settingsClassList');
-  if(!list) return;
-  if(!classes.length) {
-    list.innerHTML = '<div class="class-empty-note">No classes yet</div>';
+// ── DURATION DISPLAY ───────────────────────────────────────────
+function updateDurationDisplay() {
+  const inT = to24h($('clockIn').value, $('clockInAmPm').value);
+  const outT = to24h($('clockOut').value, $('clockOutAmPm').value);
+  const d = calcDuration(inT, outT);
+  const pill = $('durationDisplay');
+  const hint = $('durationHint');
+  if (!$('clockIn').value || !$('clockOut').value) {
+    pill.style.display = 'none'; hint.style.display = '';
     return;
   }
-  list.innerHTML = classes.map((name, i) =>
-    `<div class="class-row">
-      <div class="class-row-name">${name}</div>
-      <button class="class-row-edit" onclick="startRename(${i})">Rename</button>
-      <button class="class-row-del"  onclick="deleteClass(${i})">✕</button>
-    </div>`
-  ).join('');
+  pill.style.display = 'inline-flex'; hint.style.display = 'none';
+  if (!d) {
+    pill.className = 'duration-pill invalid';
+    pill.textContent = '⚠ Clock-out must be after clock-in';
+  } else {
+    pill.className = 'duration-pill';
+    pill.textContent = `⏱ ${d.label} · ${d.decimalLabel}`;
+  }
 }
 
-function startRename(i) {
-  renamingIndex = i;
-  const inp = $('renameInput');
-  inp.value = classes[i];
-  $('renameRow').classList.add('open');
-  $('settingsAddRow').classList.remove('open');
-  inp.focus();
-  inp.select();
+// ── FORM SUBMIT ────────────────────────────────────────────────
+function submitEntry() {
+  const className = $('className').value;
+  const date = $('entryDate').value;
+  const clockIn = to24h($('clockIn').value, $('clockInAmPm').value);
+  const clockOut = to24h($('clockOut').value, $('clockOutAmPm').value);
+  const notes = $('notes').value.trim();
+
+  if (!className || !date || !clockIn || !clockOut) {
+    toast('Please fill in all required fields', 'warn'); return;
+  }
+  const dur = calcDuration(clockIn, clockOut);
+  if (!dur) { toast('Clock-out must be after clock-in', 'error'); return; }
+
+  const entry = {
+    id: uid(),
+    className, date, clockIn, clockOut,
+    totalHours: dur.decimal, notes,
+    createdAt: new Date().toISOString()
+  };
+  state.entries.unshift(entry);
+  save();
+  localStorage.removeItem(STORAGE_KEYS.draft);
+  clearForm();
+  renderRecords();
+  renderStats();
+  renderAnalytics();
+  toast('Entry saved successfully! 🎉');
+  syncToSheets(entry);
+}
+function clearForm() {
+  $('entryDate').value = nowDate();
+  $('clockIn').value = ''; $('clockOut').value = '';
+  $('clockInAmPm').value = 'AM'; $('clockOutAmPm').value = 'AM';
+  $('notes').value = '';
+  updateDurationDisplay();
+  localStorage.removeItem(STORAGE_KEYS.draft);
 }
 
-function cancelRename() {
-  $('renameRow').classList.remove('open');
-  renamingIndex = null;
-}
-
-async function confirmRename() {
-  if(renamingIndex === null) return;
-  const newName = $('renameInput').value.trim();
-  const oldName = classes[renamingIndex];
-  if(!newName) { $('renameInput').focus(); return; }
-  if(newName === oldName) { cancelRename(); return; }
-  if(classes.includes(newName)) { toast('That name already exists','⚠️'); $('renameInput').focus(); return; }
-
-  classes[renamingIndex] = newName;
-  saveClasses();
-  entries.forEach(e => { if(e.className === oldName) e.className = newName; });
-  cacheEntries();
-  cancelRename();
-  renderSettingsClasses();
-  populateSelects();
-  renderEntries();
-  toast(`Renamed to "${newName}"`, '✅');
-  try { await apiPost({ action:'renameClass', oldName, newName }); } catch {}
-}
-
-async function deleteClass(i) {
-  const name = classes[i];
-  if(!confirm(`Delete "${name}"? This will not delete entries logged under it.`)) return;
-  classes.splice(i, 1);
-  saveClasses();
-  renderSettingsClasses();
-  populateSelects();
-  toast('"' + name + '" deleted', '🗑');
-  try { await apiPost({ action:'deleteClass', name }); } catch {}
-}
-
-function settingsShowAdd() {
-  $('settingsAddRow').classList.add('open');
-  $('settingsNewClass').value = '';
-  $('settingsNewClass').focus();
-}
-function settingsCancelAdd() {
-  $('settingsAddRow').classList.remove('open');
-}
-async function settingsConfirmAdd() {
-  const inp = $('settingsNewClass');
-  const name = inp.value.trim();
-  if(!name) { inp.focus(); return; }
-  if(classes.includes(name)) { toast('Class already exists','⚠️'); inp.focus(); return; }
-  classes.push(name); saveClasses(); populateSelects(name);
-  settingsCancelAdd(); renderSettingsClasses();
-  toast(`"${name}" added`, '✅');
-  try { await apiPost({ action: 'addClass', name }); }
-  catch { toast('Added locally — sync failed', '⚠️'); }
-}
-
-$('settingsNewClass') && $('settingsNewClass').addEventListener('keydown', e => {
-  if(e.key === 'Enter') settingsConfirmAdd();
-  if(e.key === 'Escape') settingsCancelAdd();
-});
-$('renameInput').addEventListener('keydown', e => {
-  if(e.key === 'Enter') confirmRename();
-  if(e.key === 'Escape') cancelRename();
-});
-
-/* -------------------------------------------
-   SETTINGS
-------------------------------------------- */
-function openSettings() {
-  settingsCancelAdd(); cancelRename();
-  renderSettingsClasses();
-  $('settingsOverlay').classList.add('open');
-}
-function closeSettings() { $('settingsOverlay').classList.remove('open'); }
-
-async function manualSync() {
-  if(!getUrl()){openSettings();return;}
-  showSpinner('Syncing from Google Sheets…');
-  try{
-    const data=await apiGetAll();
-    entries=(data.entries||[]).filter(r=>r.id).map(r=>({
-      ...r,
-      date:     normaliseDate(r.date),
-      clockIn:  r.clockIn  ? r.clockIn.toString().trim().slice(0,5)  : '',
-      clockOut: r.clockOut ? r.clockOut.toString().trim().slice(0,5) : ''
-    }));
-    cacheEntries();
-    if(data.classes&&data.classes.length){ classes=data.classes; saveClasses(); populateSelects(); }
-    renderEntries();
-    toast(`Synced — ${entries.length} entries, ${classes.length} classes`,'✅');
-  }catch{toast('Sync failed — check your connection','⚠️');}
-  finally{hideSpinner();}
-}
-
-/* -------------------------------------------
-   SPINNER
-------------------------------------------- */
-function showSpinner(msg) { $('spinnerTxt').textContent=msg||'Loading…'; $('spinnerWrap').classList.add('show'); }
-function hideSpinner()     { $('spinnerWrap').classList.remove('show'); }
-
-/* -------------------------------------------
-   TOAST
-------------------------------------------- */
-function toast(msg,icon='ℹ️') {
-  const el=document.createElement('div'); el.className='toast';
-  el.innerHTML=`<span>${icon}</span><span>${msg}</span>`;
-  $('toasts').appendChild(el);
-  requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('show')));
-  setTimeout(()=>{el.classList.remove('show');setTimeout(()=>el.remove(),350);},3200);
-}
-
-/* -------------------------------------------
-   PWA INSTALL
-------------------------------------------- */
-window.addEventListener('beforeinstallprompt',e=>{
-  e.preventDefault(); deferredInstall=e;
-  $('installBanner').classList.add('show');
-});
-window.addEventListener('appinstalled',()=>{
-  $('installBanner').classList.remove('show'); deferredInstall=null;
-  toast('App installed!','📱');
-});
-
-/* -------------------------------------------
-   INIT
-------------------------------------------- */
-document.addEventListener('DOMContentLoaded', async () => {
-
-  // Build time pickers
-  ['f','mIn','mOut'].forEach(buildPicker);
-
-  // Load classes
-  classes = loadClasses();
-  populateSelects();
-
-  // Wire change handlers
-
-  $('fNewClass').addEventListener('keydown', e=>{ if(e.key==='Enter')confirmAdd('f'); if(e.key==='Escape')cancelAdd('f'); });
-  $('mNewClass').addEventListener('keydown', e=>{ if(e.key==='Enter')confirmAdd('m'); if(e.key==='Escape')cancelAdd('m'); });
-  ['mInHr','mInMin','mOutHr','mOutMin'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('change',refreshDurPreview); });
-
-  // Overlay close on backdrop tap
-  $('editOverlay').addEventListener('click',    e=>{ if(e.target===$('editOverlay'))    closeEdit(); });
-  $('settingsOverlay').addEventListener('click', e=>{ if(e.target===$('settingsOverlay')) closeSettings(); });
-
-  // Install button
-  $('installBtn').addEventListener('click', async ()=>{
-    if(!deferredInstall) return;
-    deferredInstall.prompt();
-    const {outcome}=await deferredInstall.userChoice;
-    if(outcome==='accepted') deferredInstall=null;
+// ── RECORDS RENDERING ──────────────────────────────────────────
+function getFilteredEntries() {
+  let list = [...state.entries];
+  if (state.filterClass) list = list.filter(e => e.className === state.filterClass);
+  if (state.searchTerm) {
+    const q = state.searchTerm.toLowerCase();
+    list = list.filter(e =>
+      e.className.toLowerCase().includes(q) ||
+      e.date.includes(q) ||
+      (e.notes||'').toLowerCase().includes(q)
+    );
+  }
+  list.sort((a,b) => {
+    if (state.sortBy === 'date-asc') return a.date.localeCompare(b.date);
+    if (state.sortBy === 'date-desc') return b.date.localeCompare(a.date);
+    if (state.sortBy === 'class') return a.className.localeCompare(b.className);
+    if (state.sortBy === 'hours-desc') return b.totalHours - a.totalHours;
+    return 0;
   });
+  return list;
+}
+function renderRecords() {
+  const list = getFilteredEntries();
+  const total = list.length;
+  const pages = Math.max(1, Math.ceil(total / state.pageSize));
+  if (state.page > pages) state.page = pages;
+  const start = (state.page - 1) * state.pageSize;
+  const slice = list.slice(start, start + state.pageSize);
 
-  // Default dates
-  $('fDate').value = today();
-  const now=new Date(), y=now.getFullYear(), mo=String(now.getMonth()+1).padStart(2,'0');
-  $('rFrom').value = `${y}-${mo}-01`;
-  $('rTo').value   = today();
+  const tbody = $('recordsBody');
+  if (!tbody) return;
 
-  // One-time migration: clear any dummy classes from older versions
-  const storedClasses = loadClasses();
-  const dummies = ['MOS (F to F) May 2026', 'MOS (Online) July 2026'];
-  const hasDummies = storedClasses.some(cl => dummies.includes(cl));
-  if (hasDummies) {
-    const cleaned = storedClasses.filter(cl => !dummies.includes(cl));
-    localStorage.setItem(K.classes, JSON.stringify(cleaned));
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">📋</div><p>No entries yet. Start logging your classes!</p></div></td></tr>`;
+  } else {
+    tbody.innerHTML = slice.map((e, i) => {
+      const dur = calcDuration(e.clockIn, e.clockOut);
+      const displayIn = e.clockInDisplay || formatTime12(e.clockIn);
+      const displayOut = e.clockOutDisplay || formatTime12(e.clockOut);
+      return `<tr>
+        <td style="color:var(--ink-3);font-size:.8rem">${start+i+1}</td>
+        <td><span class="class-tag">${e.className}</span></td>
+        <td>${formatDate(e.date)}</td>
+        <td>${displayIn}</td>
+        <td>${displayOut}</td>
+        <td><span class="badge">${dur ? dur.label : '—'}</span><br><small style="color:var(--ink-3)">${dur ? dur.decimalLabel : ''}</small></td>
+        <td style="max-width:160px;font-size:.8rem;color:var(--ink-3)">${e.notes || '—'}</td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-xs btn-secondary" onclick="openEdit('${e.id}')">✏️</button>
+            <button class="btn btn-xs btn-danger" onclick="deleteEntry('${e.id}')">🗑</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
   }
 
-  // Load from cache — sanitise any previously corrupted time values
-  entries = loadCache().map(r => ({
-    ...r,
-    clockIn:  toHHMM(r.clockIn),
-    clockOut: toHHMM(r.clockOut)
-  }));
-  renderEntries();
-  updateHintBanner();
+  $('paginationInfo').textContent = total ? `Showing ${start+1}–${Math.min(start+state.pageSize, total)} of ${total} entries` : '';
+  const pbtn = $('paginationBtns');
+  pbtn.innerHTML = '';
+  for (let p = 1; p <= pages; p++) {
+    const b = document.createElement('button');
+    b.className = `btn btn-xs ${p === state.page ? 'btn-primary' : 'btn-secondary'}`;
+    b.textContent = p;
+    b.addEventListener('click', () => { state.page = p; renderRecords(); });
+    pbtn.appendChild(b);
+  }
+  renderStats();
+}
 
-  // Then refresh everything from Google Sheets if a URL is configured
-  if(getUrl()) {
-    showSpinner('Syncing from Google Sheets…');
-    try {
-      const data = await apiGetAll();
-      // Normalise entries — sanitise date and time formats from Sheets
-      entries = (data.entries||[]).filter(r=>r.id).map(r=>({
-        ...r,
-        date:     normaliseDate(r.date),
-        clockIn:  toHHMM(r.clockIn),
-        clockOut: toHHMM(r.clockOut)
-      }));
-      cacheEntries();
-      // Load classes from sheet
-      if(data.classes && data.classes.length) {
-        classes = data.classes;
-        saveClasses();
-        populateSelects();
-      }
-      renderEntries();
-      toast(`Synced — ${entries.length} entries, ${classes.length} classes`,'✅');
-    } catch {
-      toast('Could not reach Sheets — showing cached data','⚠️');
-    } finally {
-      hideSpinner();
+// ── STATS ──────────────────────────────────────────────────────
+function renderStats() {
+  const totalHrs = state.entries.reduce((s,e) => s+e.totalHours,0);
+  const now = new Date();
+  const thisMonth = state.entries.filter(e => e.date.startsWith(now.toISOString().slice(0,7)));
+  const monthHrs = thisMonth.reduce((s,e) => s+e.totalHours,0);
+  const thisWeekStart = new Date(now); thisWeekStart.setDate(now.getDate() - now.getDay());
+  const weekStr = thisWeekStart.toISOString().split('T')[0];
+  const weekHrs = state.entries.filter(e => e.date >= weekStr).reduce((s,e)=>s+e.totalHours,0);
+
+  const statsEl = $('statsRow');
+  if (!statsEl) return;
+  statsEl.innerHTML = `
+    <div class="stat-card accent">
+      <div class="stat-label">This Week</div>
+      <div class="stat-value">${weekHrs.toFixed(1)}</div>
+      <div class="stat-sub">hours logged</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">This Month</div>
+      <div class="stat-value">${monthHrs.toFixed(1)}</div>
+      <div class="stat-sub">${now.toLocaleString('en',{month:'long'})}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Hours</div>
+      <div class="stat-value">${totalHrs.toFixed(1)}</div>
+      <div class="stat-sub">${state.entries.length} entries</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Classes</div>
+      <div class="stat-value">${state.classes.length}</div>
+      <div class="stat-sub">configured</div>
+    </div>
+  `;
+}
+
+// ── EDIT ───────────────────────────────────────────────────────
+function openEdit(id) {
+  const e = state.entries.find(x => x.id === id);
+  if (!e) return;
+  state.editingId = id;
+  renderClassSelects();
+  $('editClassName').value = e.className;
+  $('editDate').value = e.date;
+  $('editClockIn').value = e.clockIn;
+  $('editClockOut').value = e.clockOut;
+  $('editNotes').value = e.notes || '';
+  const inH = parseInt(e.clockIn.split(':')[0]);
+  const outH = parseInt(e.clockOut.split(':')[0]);
+  $('editClockInAmPm').value = inH >= 12 ? 'PM' : 'AM';
+  $('editClockOutAmPm').value = outH >= 12 ? 'PM' : 'AM';
+  $('editModal').classList.add('open');
+}
+function saveEdit() {
+  const e = state.entries.find(x => x.id === state.editingId);
+  if (!e) return;
+  const clockIn = to24h($('editClockIn').value, $('editClockInAmPm').value);
+  const clockOut = to24h($('editClockOut').value, $('editClockOutAmPm').value);
+  if (!clockIn || !clockOut || !$('editDate').value) { toast('Fill all fields','warn'); return; }
+  const dur = calcDuration(clockIn, clockOut);
+  if (!dur) { toast('Clock-out must be after clock-in','error'); return; }
+  e.className = $('editClassName').value;
+  e.date = $('editDate').value;
+  e.clockIn = clockIn;
+  e.clockOut = clockOut;
+  e.totalHours = dur.decimal;
+  e.notes = $('editNotes').value.trim();
+  save();
+  $('editModal').classList.remove('open');
+  renderRecords(); renderAnalytics(); renderReport();
+  toast('Entry updated ✅');
+}
+function deleteEntry(id) {
+  if (!confirm('Delete this entry?')) return;
+  state.entries = state.entries.filter(e => e.id !== id);
+  save(); renderRecords(); renderAnalytics(); renderReport();
+  toast('Entry deleted', 'warn');
+}
+
+// ── ANALYTICS ─────────────────────────────────────────────────
+function renderAnalytics() {
+  if (!$('analyticsStats')) return;
+  const totalHrs = state.entries.reduce((s,e) => s+e.totalHours,0);
+  const avgEntry = state.entries.length ? (totalHrs/state.entries.length).toFixed(1) : 0;
+  const classCounts = {};
+  state.entries.forEach(e => { classCounts[e.className] = (classCounts[e.className]||0) + e.totalHours; });
+  const topClass = Object.entries(classCounts).sort((a,b)=>b[1]-a[1])[0];
+
+  $('analyticsStats').innerHTML = `
+    <div class="stat-card accent">
+      <div class="stat-label">Total Hours</div>
+      <div class="stat-value">${totalHrs.toFixed(1)}</div>
+      <div class="stat-sub">all time</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg per Session</div>
+      <div class="stat-value">${avgEntry}</div>
+      <div class="stat-sub">hours</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Top Class</div>
+      <div class="stat-value" style="font-size:1.1rem">${topClass ? topClass[0].split(' ')[0] : '—'}</div>
+      <div class="stat-sub">${topClass ? topClass[1].toFixed(1)+' hrs' : 'No data'}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Sessions</div>
+      <div class="stat-value">${state.entries.length}</div>
+      <div class="stat-sub">logged</div>
+    </div>
+  `;
+
+  buildWeeklyChart();
+  buildClassChart();
+  buildMonthlyChart();
+}
+
+function chartColors() {
+  return state.theme === 'dark'
+    ? { grid: '#334155', text: '#94a3b8', bg: ['#3b82f6','#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981'] }
+    : { grid: '#e2e8f0', text: '#64748b', bg: ['#1d4ed8','#7c3aed','#db2777','#d97706','#16a34a','#0891b2'] };
+}
+
+function buildWeeklyChart() {
+  const ctx = $('weeklyChart');
+  if (!ctx) return;
+  if (state.charts.weekly) state.charts.weekly.destroy();
+  const weeks = {};
+  const now = new Date();
+  for (let w = 7; w >= 0; w--) {
+    const d = new Date(now); d.setDate(d.getDate() - w*7);
+    const wk = `${d.getFullYear()}-W${String(getWeekNumber(d.toISOString().split('T')[0])).padStart(2,'0')}`;
+    weeks[wk] = 0;
+  }
+  state.entries.forEach(e => {
+    const wk = `${e.date.split('-')[0]}-W${String(getWeekNumber(e.date)).padStart(2,'0')}`;
+    if (wk in weeks) weeks[wk] = (weeks[wk]||0) + e.totalHours;
+  });
+  const c = chartColors();
+  state.charts.weekly = new Chart(ctx, {
+    type:'bar',
+    data: { labels: Object.keys(weeks).map(k=>k.replace(/\d{4}-/,'')), datasets:[{ label:'Hours', data:Object.values(weeks), backgroundColor: c.bg[0]+'cc', borderColor: c.bg[0], borderWidth:2, borderRadius:6 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{color:c.grid}, ticks:{color:c.text,font:{size:11}}}, y:{grid:{color:c.grid}, ticks:{color:c.text,font:{size:11}}, beginAtZero:true} } }
+  });
+}
+
+function buildClassChart() {
+  const ctx = $('classChart');
+  if (!ctx) return;
+  if (state.charts.class) state.charts.class.destroy();
+  const data = {};
+  state.entries.forEach(e => { data[e.className] = (data[e.className]||0) + e.totalHours; });
+  const labels = Object.keys(data);
+  const vals = Object.values(data);
+  const c = chartColors();
+  state.charts.class = new Chart(ctx, {
+    type:'doughnut',
+    data: { labels, datasets:[{ data:vals, backgroundColor: c.bg, borderWidth:2, borderColor: 'transparent' }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ color:c.text, font:{size:11}, padding:12 } } } }
+  });
+}
+
+function buildMonthlyChart() {
+  const ctx = $('monthlyChart');
+  if (!ctx) return;
+  if (state.charts.monthly) state.charts.monthly.destroy();
+  const months = {};
+  const now = new Date();
+  for (let m = 11; m >= 0; m--) {
+    const d = new Date(now.getFullYear(), now.getMonth()-m, 1);
+    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    months[k] = 0;
+  }
+  state.entries.forEach(e => { const k = e.date.slice(0,7); if (k in months) months[k] = (months[k]||0) + e.totalHours; });
+  const c = chartColors();
+  state.charts.monthly = new Chart(ctx, {
+    type:'line',
+    data: {
+      labels: Object.keys(months).map(k => { const [y,m]=k.split('-'); return new Date(y,m-1).toLocaleString('en',{month:'short',year:'2-digit'}); }),
+      datasets:[{ label:'Hours', data:Object.values(months), fill:true, backgroundColor: c.bg[0]+'22', borderColor: c.bg[0], borderWidth:2.5, pointRadius:4, tension:.35 }]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{grid:{color:c.grid}, ticks:{color:c.text,font:{size:11}}}, y:{grid:{color:c.grid}, ticks:{color:c.text,font:{size:11}}, beginAtZero:true} } }
+  });
+}
+
+// ── REPORT ─────────────────────────────────────────────────────
+function renderReport() {
+  const rm = state.reportMonth;
+  const y = rm.getFullYear(), m = rm.getMonth();
+  const label = rm.toLocaleString('en-US',{month:'long',year:'numeric'});
+  if ($('reportMonthLabel')) $('reportMonthLabel').textContent = label;
+
+  const monthEntries = state.entries.filter(e => {
+    const [ey,em] = e.date.split('-').map(Number);
+    return ey === y && em === m+1;
+  }).sort((a,b) => a.date.localeCompare(b.date));
+
+  const tbody = $('reportBody');
+  if (!tbody) return;
+  if (!monthEntries.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📅</div><p>No entries for ${label}</p></div></td></tr>`;
+    $('reportTotal').textContent = '';
+    return;
+  }
+  tbody.innerHTML = monthEntries.map(e => {
+    const dur = calcDuration(e.clockIn, e.clockOut);
+    return `<tr>
+      <td>${formatDate(e.date)}</td>
+      <td><span class="class-tag">${e.className}</span></td>
+      <td>${formatTime12(e.clockIn)}</td>
+      <td>${formatTime12(e.clockOut)}</td>
+      <td>${dur ? dur.label : '—'}</td>
+      <td>${dur ? dur.decimalLabel : '—'}</td>
+      <td style="font-size:.8rem;color:var(--ink-3)">${e.notes||'—'}</td>
+    </tr>`;
+  }).join('');
+  const total = monthEntries.reduce((s,e)=>s+e.totalHours,0);
+  const h = Math.floor(total); const mins = Math.round((total-h)*60);
+  $('reportTotal').innerHTML = `<strong>Total: ${h}h ${mins}m &nbsp;·&nbsp; ${total.toFixed(2)} hrs</strong>`;
+}
+
+// ── EXPORT CSV ─────────────────────────────────────────────────
+function exportCSV() {
+  if (!state.entries.length) { toast('No data to export','warn'); return; }
+  const headers = ['ID','Class Name','Date','Clock-In','Clock-Out','Total Hours','Notes','Created At'];
+  const rows = state.entries.map(e => [
+    e.id, `"${e.className}"`, e.date,
+    formatTime12(e.clockIn), formatTime12(e.clockOut),
+    e.totalHours, `"${(e.notes||'').replace(/"/g,'""')}"`, e.createdAt
+  ]);
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url;
+  a.download = `time-tracker-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('CSV exported 📥');
+}
+
+// ── GOOGLE SHEETS SYNC ─────────────────────────────────────────
+async function syncToSheets(entry) {
+  if (!state.sheetsUrl) return;
+  try {
+    await fetch(state.sheetsUrl, {
+      method:'POST', mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        action:'append',
+        timestamp: entry.createdAt,
+        className: entry.className,
+        date: entry.date,
+        clockIn: formatTime12(entry.clockIn),
+        clockOut: formatTime12(entry.clockOut),
+        totalHours: entry.totalHours,
+        notes: entry.notes||''
+      })
+    });
+    $('sheetStatus') && ($('sheetStatus').textContent = '✅ Last synced: ' + new Date().toLocaleTimeString());
+  } catch(err) {
+    $('sheetStatus') && ($('sheetStatus').textContent = '⚠️ Sync failed: ' + err.message);
+  }
+}
+
+// ── DARK MODE ──────────────────────────────────────────────────
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', state.theme);
+  $('darkToggle').textContent = state.theme === 'dark' ? '☀️' : '🌙';
+  // Rebuild charts with new colors
+  if (document.getElementById('tab-analytics').classList.contains('active')) {
+    setTimeout(() => { buildWeeklyChart(); buildClassChart(); buildMonthlyChart(); }, 50);
+  }
+}
+
+// ── LIVE CLOCK ─────────────────────────────────────────────────
+function updateLiveClock() {
+  const n = new Date();
+  const h = n.getHours(), m = n.getMinutes(), s = n.getSeconds();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h%12||12;
+  const str = `${h12}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} ${ampm}`;
+  if ($('liveClockDisplay')) $('liveClockDisplay').textContent = str;
+  updateElapsed();
+}
+
+// ── SESSION MANAGEMENT ─────────────────────────────────────────
+function fillNowTime() {
+  $('sessionClockInInput').value = nowTime();
+  $('sessionClockInAmPm').value = nowAmPm();
+}
+
+function clockInNow() {
+  const cls = $('sessionClass').value;
+  if (!cls) { toast('Select a class first', 'warn'); return; }
+  const dateVal = $('sessionDate').value;
+  if (!dateVal) { toast('Select a date first', 'warn'); return; }
+  const timeVal = $('sessionClockInInput').value;
+  if (!timeVal) { toast('Enter a clock-in time', 'warn'); return; }
+  const ampm = $('sessionClockInAmPm').value;
+  const clockIn = to24h(timeVal, ampm);
+  const clockInISO = new Date(dateVal + 'T' + clockIn + ':00').toISOString();
+  state.activeSession = {
+    id: uid(),
+    className: cls,
+    date: dateVal,
+    clockIn,
+    clockInISO
+  };
+  save();
+  renderSessionUI();
+  toast(`Clocked in for "${cls}" at ${formatTime12(clockIn)} 🟢`);
+}
+
+function fillClockOutNow() {
+  $('clockOutInput').value = nowTime();
+  $('clockOutAmPm').value = nowAmPm();
+}
+
+function clockOutNow() {
+  if (!state.activeSession) return;
+  const rawTime = $('clockOutInput').value;
+  if (!rawTime) { toast('Enter a clock-out time', 'warn'); return; }
+  const clockOut = to24h(rawTime, $('clockOutAmPm').value);
+  const dur = calcDuration(state.activeSession.clockIn, clockOut);
+  if (!dur) { toast('Clock-out must be after clock-in', 'error'); return; }
+
+  const entry = {
+    id: state.activeSession.id,
+    className: state.activeSession.className,
+    date: state.activeSession.date,
+    clockIn: state.activeSession.clockIn,
+    clockOut,
+    totalHours: dur.decimal,
+    notes: '',
+    createdAt: state.activeSession.clockInISO
+  };
+  state.entries.unshift(entry);
+  state.activeSession = null;
+  save();
+  renderSessionUI();
+  renderRecords();
+  renderAnalytics();
+  renderReport();
+  toast(`Clocked out — ${dur.label} logged for "${entry.className}" 🎉`);
+  syncToSheets(entry);
+}
+
+function cancelSession() {
+  if (!confirm('Cancel this active session? Clock-in will be discarded.')) return;
+  state.activeSession = null;
+  save();
+  renderSessionUI();
+  toast('Session cancelled', 'warn');
+}
+
+function updateElapsed() {
+  if (!state.activeSession || !$('sessionElapsed')) return;
+  const start = new Date(state.activeSession.clockInISO);
+  const diff = Math.floor((Date.now() - start) / 60000);
+  const h = Math.floor(diff / 60), m = diff % 60;
+  $('sessionElapsed').textContent = h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function renderSessionUI() {
+  const banner = $('activeSessionBanner');
+  const card   = $('clockInCard');
+  // Default AM/PM to current time on each render when no session
+  if (!state.activeSession && $('sessionClockInAmPm')) {
+    $('sessionClockInAmPm').value = nowAmPm();
+  }
+  if (state.activeSession) {
+    // Show banner, hide clock-in card
+    banner.style.display = '';
+    card.style.display   = 'none';
+    $('sessionClassName').textContent  = state.activeSession.className;
+    // Pre-fill clock-out with current time each time banner is shown
+    if ($('clockOutInput') && !$('clockOutInput').value) {
+      fillClockOutNow();
     }
+    $('sessionClockInTime').textContent = formatTime12(state.activeSession.clockIn);
+    updateElapsed();
+  } else {
+    // Show clock-in card, hide banner
+    banner.style.display = 'none';
+    card.style.display   = '';
   }
+}
 
-  // Show queue badge if there are pending offline changes
-  function updateQueueBadge() {
-    const q = loadQueue();
-    const badge = $('queueBadge');
-    if(badge) badge.style.display = q.length ? 'block' : 'none';
-  }
-  updateQueueBadge();
-  // Re-check badge after every potential write
-  document.addEventListener('visibilitychange', () => {
-    if(document.visibilityState === 'visible') updateQueueBadge();
+// ── INIT ───────────────────────────────────────────────────────
+function init() {
+  load();
+  applyTheme();
+  renderClassSelects();
+
+  // Set session form defaults
+  $('sessionDate').value = nowDate();
+  $('sheetsUrl').value = state.sheetsUrl;
+
+  renderSessionUI();
+  renderRecords();
+  renderAnalytics();
+  renderReport();
+
+  // Live clock + elapsed ticker
+  setInterval(updateLiveClock, 1000);
+  updateLiveClock();
+
+  // ── EVENT LISTENERS ──────────────────────────────────────────
+
+  // Tab switching
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      $('tab-'+tab).classList.add('active');
+      if (tab==='analytics') renderAnalytics();
+      if (tab==='records') renderRecords();
+      if (tab==='report') renderReport();
+      if (tab==='settings') { renderClassSelects(); $('sheetsUrl').value = state.sheetsUrl; }
+    });
   });
 
-  // On startup if online and there's a queue, flush it
-  if(navigator.onLine && getUrl()) {
-    const q = loadQueue();
-    if(q.length) setTimeout(flushQueue, 2000);
-  }
+  // Session buttons
+  $('clockInNowBtn').addEventListener('click', clockInNow);
+  $('clockOutNowBtn').addEventListener('click', clockOutNow);
+  $('cancelSessionBtn').addEventListener('click', cancelSession);
 
-  // Register service worker — force update if new version available
-  if('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').then(reg => {
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        newWorker.addEventListener('statechange', () => {
-          if(newWorker.state === 'activated') window.location.reload();
-        });
-      });
-      reg.update();
-    }).catch(()=>{});
-  }
+  // Records controls
+  $('searchInput').addEventListener('input', e => { state.searchTerm = e.target.value; state.page=1; renderRecords(); });
+  $('filterClass').addEventListener('change', e => { state.filterClass = e.target.value; state.page=1; renderRecords(); });
+  $('sortSelect').addEventListener('change', e => { state.sortBy = e.target.value; renderRecords(); });
+  $('refreshBtn').addEventListener('click', renderRecords);
 
-});
-</script>
+  // Edit modal
+  $('closeEditModal').addEventListener('click', () => $('editModal').classList.remove('open'));
+  $('cancelEdit').addEventListener('click', () => $('editModal').classList.remove('open'));
+  $('saveEdit').addEventListener('click', saveEdit);
+  $('editModal').addEventListener('click', e => { if (e.target === $('editModal')) $('editModal').classList.remove('open'); });
+
+  // Dark mode
+  $('darkToggle').addEventListener('click', () => {
+    state.theme = state.theme === 'dark' ? 'light' : 'dark';
+    applyTheme(); save();
+  });
+
+  // Export / print
+  $('exportBtn').addEventListener('click', exportCSV);
+  $('exportBtnSettings') && $('exportBtnSettings').addEventListener('click', exportCSV);
+  $('printBtn').addEventListener('click', () => window.print());
+  $('printReportBtn') && $('printReportBtn').addEventListener('click', () => window.print());
+
+  // Report navigation
+  $('prevMonth').addEventListener('click', () => { state.reportMonth = new Date(state.reportMonth.getFullYear(), state.reportMonth.getMonth()-1,1); renderReport(); });
+  $('nextMonth').addEventListener('click', () => { state.reportMonth = new Date(state.reportMonth.getFullYear(), state.reportMonth.getMonth()+1,1); renderReport(); });
+
+  // Settings
+  $('saveSheetUrl').addEventListener('click', () => {
+    state.sheetsUrl = $('sheetsUrl').value.trim();
+    save(); toast('Google Sheets URL saved 💾');
+  });
+  $('testSheetUrl').addEventListener('click', async () => {
+    if (!state.sheetsUrl) { toast('Enter a URL first','warn'); return; }
+    try {
+      await fetch(state.sheetsUrl, {mode:'no-cors'});
+      toast('Connection OK ✅');
+    } catch(e) { toast('Connection test failed','error'); }
+  });
+  $('syncBtn').addEventListener('click', async () => {
+    if (!state.sheetsUrl) { toast('Set Apps Script URL first','warn'); return; }
+    toast('Syncing to Google Sheets…');
+    for (const e of state.entries) await syncToSheets(e);
+    toast('All entries synced 🔄');
+  });
+
+  $('addClassBtn').addEventListener('click', () => {
+    const name = $('newClassName').value.trim();
+    if (!name) { toast('Enter a class name','warn'); return; }
+    if (state.classes.includes(name)) { toast('Class already exists','warn'); return; }
+    state.classes.push(name);
+    $('newClassName').value = '';
+    save(); renderClassSelects(); toast(`"${name}" added ✅`);
+  });
+
+  $('clearAllBtn').addEventListener('click', () => {
+    if (!confirm('Clear ALL local data? This cannot be undone.')) return;
+    state.entries = []; state.activeSession = null;
+    $('sessionDate').value = nowDate(); $('sessionClockInInput').value = '';
+    save(); renderSessionUI(); renderRecords(); renderAnalytics(); renderReport();
+    toast('All data cleared','warn');
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);</script>
 </body>
 </html>

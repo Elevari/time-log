@@ -1,14 +1,25 @@
 {
-  "name": "Time.Log — Instructor Tracker",
+  "name": "Time.Log \u2014 Instructor Tracker",
   "short_name": "Time.Log",
   "description": "Log clock-in and clock-out times for instructor sessions",
-  "start_url": "/",
+  "start_url": "/time-log/",
   "display": "standalone",
   "background_color": "#0e0e11",
   "theme_color": "#0e0e11",
   "orientation": "portrait-primary",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
-  ]
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "scope": "/time-log/"
 }

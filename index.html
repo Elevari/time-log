@@ -501,7 +501,10 @@ button { cursor:pointer; }
 
       <div class="field">
         <label>Class</label>
-        <div class="sel-wrap"><select id="fClass"></select></div>
+        <div style="display:flex;gap:.4rem">
+          <div class="sel-wrap" style="flex:1"><select id="fClass"></select></div>
+          <button type="button" class="btn-add" onclick="showAdd('f')" title="Add new class">＋</button>
+        </div>
         <div class="add-row" id="fAddRow">
           <input type="text" id="fNewClass" placeholder="Class name…" maxlength="60">
           <button class="btn-add" onclick="confirmAdd('f')">Add</button>
@@ -584,7 +587,10 @@ button { cursor:pointer; }
 
     <div class="field">
       <label>Class</label>
-      <div class="sel-wrap"><select id="mClass"></select></div>
+      <div style="display:flex;gap:.4rem">
+        <div class="sel-wrap" style="flex:1"><select id="mClass"></select></div>
+        <button type="button" class="btn-add" onclick="showAdd('m')" title="Add new class">＋</button>
+      </div>
       <div class="add-row" id="mAddRow">
         <input type="text" id="mNewClass" placeholder="Class name…" maxlength="60">
         <button class="btn-add" onclick="confirmAdd('m')">Add</button>
@@ -783,14 +789,11 @@ function populateSelects(active) {
     const el=$(id); if(!el) return;
     const prev=active||el.value;
     el.innerHTML=(id==='rClass'?'<option value="">All classes</option>':'')+
-      classes.map(c=>`<option value="${c}">${c}</option>`).join('')+
-      (id!=='rClass'?'<option value="__add__">＋ New class…</option>':'');
-    if(prev&&prev!=='__add__') el.value=prev;
+      (classes.length
+        ? classes.map(cl=>`<option value="${cl}">${cl}</option>`).join('')
+        : '<option value="" disabled>No classes yet — tap ＋ to add</option>');
+    if(prev) el.value=prev;
   });
-}
-function handleClassChange(pfx) {
-  const sel=$(pfx==='f'?'fClass':'mClass');
-  if(sel.value==='__add__'){if(classes.length) sel.value=classes[0]; showAdd(pfx);}
 }
 function showAdd(pfx) { const r=$(pfx+'AddRow'),i=$(pfx+'NewClass'); r.classList.add('open'); i.value=''; i.focus(); }
 function cancelAdd(pfx) { $(pfx+'AddRow').classList.remove('open'); }
@@ -1056,8 +1059,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   populateSelects();
 
   // Wire change handlers
-  $('fClass').addEventListener('change', ()=>handleClassChange('f'));
-  $('mClass').addEventListener('change', ()=>handleClassChange('m'));
+
   $('fNewClass').addEventListener('keydown', e=>{ if(e.key==='Enter')confirmAdd('f'); if(e.key==='Escape')cancelAdd('f'); });
   $('mNewClass').addEventListener('keydown', e=>{ if(e.key==='Enter')confirmAdd('m'); if(e.key==='Escape')cancelAdd('m'); });
   ['mInHr','mInMin','mOutHr','mOutMin'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('change',refreshDurPreview); });

@@ -250,7 +250,7 @@ button { cursor:pointer; }
   position:relative; overflow:hidden;
   transition:border-color .15s,background .15s;
   animation:fadeUp .3s var(--ease) both;
-  display:flex; flex-direction:column; gap:.6rem;
+  display:flex; flex-direction:row; align-items:stretch; gap:.75rem;
 }
 .entry::before {
   content:''; position:absolute;
@@ -258,16 +258,24 @@ button { cursor:pointer; }
 }
 .entry.done::before    { background:var(--accent); }
 .entry.pending::before { background:var(--warn); }
-.entry-top-row { display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
-.entry-left { min-width:0; flex:1; cursor:pointer; }
+/* left: class/date + times stacked */
+.entry-main { flex:1; min-width:0; cursor:pointer; display:flex; flex-direction:column; gap:.5rem; }
+.entry-top-row { display:flex; align-items:center; gap:.5rem; }
+.entry-left { min-width:0; flex:1; }
 .entry-class { font-family:var(--H); font-size:.95rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .entry-date  { font-size:.72rem; color:var(--text3); margin-top:.1rem; }
-.entry-bottom-row { display:flex; align-items:center; gap:.45rem; cursor:pointer; }
+.entry-bottom-row { display:flex; align-items:center; gap:.45rem; }
 .t-val       { font-family:var(--H); font-size:.95rem; font-weight:600; white-space:nowrap; }
 .t-val.no-time { color:var(--text3); }
 .t-arrow { color:var(--text3); font-size:.8rem; }
-.dur { margin-left:auto; font-family:var(--H); font-size:.82rem; font-weight:700; color:var(--accent); white-space:nowrap; }
-.dur small { display:inline; font-family:var(--B); font-size:.72rem; font-weight:400; color:var(--text3); margin-left:.2rem; }
+/* right: delete button + duration stacked */
+.entry-right {
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:space-between;
+  flex-shrink:0; gap:.4rem;
+}
+.dur { font-family:var(--H); font-size:.82rem; font-weight:700; color:var(--accent); white-space:nowrap; margin-left:auto; }
+.dur small { display:block; font-family:var(--B); font-size:.68rem; font-weight:400; color:var(--text3); }
 .badge {
   font-size:.6rem; font-weight:700; letter-spacing:.06em;
   text-transform:uppercase; padding:.22rem .5rem;
@@ -949,19 +957,23 @@ function renderEntries() {
   list.innerHTML=slice.map((e,i)=>{
     const d=calcDur(e.clockIn,e.clockOut), done=!!e.clockOut;
     return `<div class="entry ${done?'done':'pending'}" style="animation-delay:${i*35}ms">
-      <div class="entry-top-row">
-        <div class="entry-left" onclick="openEdit('${e.id}')">
-          <div class="entry-class">${e.className}</div>
-          <div class="entry-date">${fmtDate(e.date)}</div>
+      <div class="entry-main" onclick="openEdit('${e.id}')">
+        <div class="entry-top-row">
+          <div class="entry-left">
+            <div class="entry-class">${e.className}</div>
+            <div class="entry-date">${fmtDate(e.date)}</div>
+          </div>
+          <span class="badge ${done?'done':'pending'}">${done?'Complete':'No clock-out'}</span>
         </div>
-        <span class="badge ${done?'done':'pending'}" onclick="openEdit('${e.id}')">${done?'Complete':'No clock-out'}</span>
-        <button class="entry-del" onclick="quickDelete('${e.id}')" title="Delete">✕</button>
+        <div class="entry-bottom-row">
+          <div class="t-val">${fmt12(e.clockIn)||'—'}</div>
+          <div class="t-arrow">→</div>
+          <div class="t-val ${!done?'no-time':''}">${fmt12(e.clockOut)||'—'}</div>
+          ${d?`<div class="dur">${d.label}<small>${d.dec}h</small></div>`:''}
+        </div>
       </div>
-      <div class="entry-bottom-row" onclick="openEdit('${e.id}')">
-        <div class="t-val">${fmt12(e.clockIn)||'—'}</div>
-        <div class="t-arrow">→</div>
-        <div class="t-val ${!done?'no-time':''}">${fmt12(e.clockOut)||'—'}</div>
-        ${d?`<div class="dur">${d.label}<small>· ${d.dec}h</small></div>`:''}
+      <div class="entry-right">
+        <button class="entry-del" onclick="quickDelete('${e.id}')" title="Delete">✕</button>
       </div>
     </div>`;
   }).join('');

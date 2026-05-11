@@ -1,4 +1,4 @@
-const CACHE = 'timelog-v5';
+const CACHE = 'timelog-v7';
 const ASSETS = ['/time-log/', '/time-log/index.html', '/time-log/manifest.json'];
 
 self.addEventListener('install', e => {

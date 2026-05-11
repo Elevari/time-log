@@ -922,6 +922,24 @@ function enqueue(body) {
   updateQueueBadge();
 }
 
+async function sendToSheet(body) {
+  const url = getUrl(); if(!url) throw new Error('no url');
+  const encoded = encodeURIComponent(JSON.stringify(body));
+  // Apps Script GET with payload - fire and check response
+  const r = await fetch(url + '?payload=' + encoded, { redirect:'follow', cache:'no-store' });
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  // Try to parse response but don't fail if we can't
+  try {
+    const text = await r.text();
+    const d = JSON.parse(text);
+    if(d && d.error) throw new Error(d.error);
+  } catch(e) {
+    // If JSON parse fails it just means Apps Script returned something unexpected
+    // but the request likely succeeded - don't re-queue
+    if(e.message && e.message !== 'JSON parse') console.warn('Sheet response:', e.message);
+  }
+}
+
 async function flushQueue() {
   const url = getUrl(); if(!url) return;
   const q = dedupeQueue(loadQueue()); if(!q.length) return;
@@ -929,48 +947,60 @@ async function flushQueue() {
   const failed = [];
   for(const item of q) {
     try {
-      const encoded = encodeURIComponent(JSON.stringify(item.body));
-      const r = await fetch(url + '?payload=' + encoded, { redirect:'follow', cache:'no-store' });
-      const text = await r.text();
-      let ok = true;
-      try { const d = JSON.parse(text); if(d && d.error) ok = false; } catch {}
-      if(ok) synced++; else failed.push(item);
-    } catch { failed.push(item); }
+      await sendToSheet(item.body);
+      synced++;
+    } catch(e) {
+      console.warn('Queue flush failed:', e.message);
+      failed.push(item);
+    }
   }
   saveQueue(failed);
   updateQueueBadge();
   if(synced > 0) {
     toast('Synced ' + synced + ' offline change' + (synced!==1?'s':''), '☁️');
-    try {
-      const data = await apiGetAll();
-      entries = (data.entries||[]).filter(r=>r.id).map(r=>({
-        ...r, date:normaliseDate(r.date), clockIn:toHHMM(r.clockIn), clockOut:toHHMM(r.clockOut)
-      }));
-      cacheEntries();
-      if(data.classes&&data.classes.length){ classes=data.classes; saveClasses(); populateSelects(); }
-      renderEntries();
-    } catch {}
   }
+  // Always refresh from sheet after flush attempt
+  try {
+    const data = await apiGetAll();
+    entries = (data.entries||[]).filter(r=>r.id).map(r=>({
+      ...r, date:normaliseDate(r.date), clockIn:toHHMM(r.clockIn), clockOut:toHHMM(r.clockOut)
+    }));
+    cacheEntries();
+    if(data.classes&&data.classes.length){ classes=data.classes; saveClasses(); populateSelects(); }
+    renderEntries();
+  } catch {}
 }
 
 async function apiPost(body) {
   const url = getUrl(); if(!url) return;
   if(!navigator.onLine) { enqueue(body); return; }
   try {
-    const encoded = encodeURIComponent(JSON.stringify(body));
-    const r = await fetch(url + '?payload=' + encoded, { redirect:'follow', cache:'no-store' });
-    const text = await r.text();
-    try { const d = JSON.parse(text); if(d && d.error) enqueue(body); } catch {}
-  } catch { enqueue(body); }
+    await sendToSheet(body);
+  } catch {
+    enqueue(body);
+  }
   updateQueueBadge();
 }
 
 window.addEventListener('online', () => {
-  const q = loadQueue();
-  if(q.length) {
-    toast('Back online - syncing ' + q.length + ' change' + (q.length!==1?'s':'') + '...', '📶');
-    setTimeout(flushQueue, 1500);
-  }
+  toast('Back online - syncing...', '📶');
+  // Small delay to let connection stabilise then flush + refresh
+  setTimeout(async () => {
+    await flushQueue();
+    // Even if queue was empty, refresh data from sheet
+    if(!loadQueue().length) {
+      try {
+        const data = await apiGetAll();
+        entries = (data.entries||[]).filter(r=>r.id).map(r=>({
+          ...r, date:normaliseDate(r.date), clockIn:toHHMM(r.clockIn), clockOut:toHHMM(r.clockOut)
+        }));
+        cacheEntries();
+        if(data.classes&&data.classes.length){ classes=data.classes; saveClasses(); populateSelects(); }
+        renderEntries();
+        toast('Data refreshed from Sheets', '✅');
+      } catch {}
+    }
+  }, 2000);
 });
 
 /* -------------------------------------------

@@ -523,15 +523,7 @@ button { cursor:pointer; }
     </div>
   </div>
 
-  <!-- CONNECT HINT (shown when no URL saved) -->
-  <div class="hint-banner" id="hintBanner">
-    <div class="hint-text">
-      <strong>Connect Google Sheets</strong>
-      Tap to save your data to a spreadsheet
-    </div>
-    <button class="btn-hint" onclick="openSettings()">Connect</button>
-    <button class="hint-close" onclick="dismissHint()" aria-label="Dismiss">✕</button>
-  </div>
+  <!-- Hint banner removed — URL is hardcoded -->
 
   <!-- INSTALL BANNER -->
   <div class="install-banner" id="installBanner">
@@ -1204,11 +1196,7 @@ function switchTab(name,btn) {
 /* -------------------------------------------
    HINT BANNER
 ------------------------------------------- */
-function updateHintBanner() {
-  // URL is hardcoded — always hide hint banner
-  $('hintBanner').classList.add('hidden');
-}
-function dismissHint() { $('hintBanner').classList.add('hidden'); }
+
 
 /* -------------------------------------------
    SETTINGS — MANAGE CLASSES
@@ -1416,7 +1404,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     clockOut: toHHMM(r.clockOut)
   }));
   renderEntries();
-  updateHintBanner();
 
   // Then refresh everything from Google Sheets if a URL is configured
   if(getUrl()) {

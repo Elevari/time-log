@@ -1,49 +1,29 @@
-const CACHE_NAME = 'timelog-v1';
-const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json'
-];
+const CACHE = 'timelog-v1';
+const ASSETS = ['/', '/index.html', '/manifest.json'];
 
-// Install: cache core assets
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
-  );
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
   self.skipWaiting();
 });
-
-// Activate: clean up old caches
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
-  );
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(keys =>
+    Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+  ));
   self.clients.claim();
 });
-
-// Fetch: cache-first for assets, network-first for API calls
-self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-
-  // Let Google Sheets API calls go straight to network
-  if (url.hostname.includes('script.google.com')) {
-    event.respondWith(fetch(event.request).catch(() => new Response('', { status: 503 })));
+self.addEventListener('fetch', e => {
+  if (e.request.url.includes('script.google.com')) {
+    e.respondWith(fetch(e.request).catch(() => new Response('',{status:503})));
     return;
   }
-
-  // Cache-first for everything else
-  event.respondWith(
-    caches.match(event.request).then(cached => {
+  e.respondWith(
+    caches.match(e.request).then(cached => {
       if (cached) return cached;
-      return fetch(event.request).then(response => {
-        // Cache successful GET responses
-        if (event.request.method === 'GET' && response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+      return fetch(e.request).then(res => {
+        if (e.request.method === 'GET' && res.status === 200) {
+          caches.open(CACHE).then(c => c.put(e.request, res.clone()));
         }
-        return response;
+        return res;
       }).catch(() => caches.match('/index.html'));
     })
   );

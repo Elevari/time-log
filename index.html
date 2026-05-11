@@ -246,11 +246,11 @@ button { cursor:pointer; }
 /* ─── ENTRY CARD ────────────────────────────────────────────── */
 .entry {
   background:var(--bg2); border:1.5px solid var(--border);
-  border-radius:var(--rsm); padding:.7rem 1rem;
-  cursor:pointer; position:relative; overflow:hidden;
-  transition:border-color .15s,background .15s,transform .12s;
+  border-radius:var(--r); padding:.9rem 1rem;
+  position:relative; overflow:hidden;
+  transition:border-color .15s,background .15s;
   animation:fadeUp .3s var(--ease) both;
-  display:flex; align-items:center; gap:.75rem;
+  display:flex; flex-direction:column; gap:.6rem;
 }
 .entry::before {
   content:''; position:absolute;
@@ -258,20 +258,19 @@ button { cursor:pointer; }
 }
 .entry.done::before    { background:var(--accent); }
 .entry.pending::before { background:var(--warn); }
-.entry:hover  { background:var(--bg3); border-color:var(--border2); transform:translateY(-1px); }
-.entry:active { transform:scale(.99); }
-.entry-left { flex:1; min-width:0; }
-.entry-class { font-family:var(--H); font-size:.85rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.entry-date  { font-size:.7rem; color:var(--text3); margin-top:.05rem; }
-.entry-times { display:flex; align-items:center; gap:.35rem; flex-shrink:0; }
-.t-val       { font-family:var(--H); font-size:.85rem; font-weight:600; white-space:nowrap; }
+.entry-top-row { display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
+.entry-left { min-width:0; flex:1; cursor:pointer; }
+.entry-class { font-family:var(--H); font-size:.95rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.entry-date  { font-size:.72rem; color:var(--text3); margin-top:.1rem; }
+.entry-bottom-row { display:flex; align-items:center; gap:.45rem; cursor:pointer; }
+.t-val       { font-family:var(--H); font-size:.95rem; font-weight:600; white-space:nowrap; }
 .t-val.no-time { color:var(--text3); }
-.t-arrow { color:var(--text3); font-size:.75rem; }
-.dur { font-family:var(--H); font-size:.78rem; font-weight:700; color:var(--accent); white-space:nowrap; }
-.dur small { display:inline; font-family:var(--B); font-size:.68rem; font-weight:400; color:var(--text3); margin-left:.25rem; }
+.t-arrow { color:var(--text3); font-size:.8rem; }
+.dur { margin-left:auto; font-family:var(--H); font-size:.82rem; font-weight:700; color:var(--accent); white-space:nowrap; }
+.dur small { display:inline; font-family:var(--B); font-size:.72rem; font-weight:400; color:var(--text3); margin-left:.2rem; }
 .badge {
-  font-size:.58rem; font-weight:700; letter-spacing:.06em;
-  text-transform:uppercase; padding:.18rem .45rem;
+  font-size:.6rem; font-weight:700; letter-spacing:.06em;
+  text-transform:uppercase; padding:.22rem .5rem;
   border-radius:99px; white-space:nowrap; flex-shrink:0;
 }
 .badge.done    { background:var(--accent-bg); color:var(--accent); border:1px solid rgba(200,240,78,.2); }
@@ -950,18 +949,20 @@ function renderEntries() {
   list.innerHTML=slice.map((e,i)=>{
     const d=calcDur(e.clockIn,e.clockOut), done=!!e.clockOut;
     return `<div class="entry ${done?'done':'pending'}" style="animation-delay:${i*35}ms">
-      <div class="entry-left" onclick="openEdit('${e.id}')" style="flex:1;cursor:pointer;min-width:0">
-        <div class="entry-class">${e.className}</div>
-        <div class="entry-date">${fmtDate(e.date)}</div>
+      <div class="entry-top-row">
+        <div class="entry-left" onclick="openEdit('${e.id}')">
+          <div class="entry-class">${e.className}</div>
+          <div class="entry-date">${fmtDate(e.date)}</div>
+        </div>
+        <span class="badge ${done?'done':'pending'}" onclick="openEdit('${e.id}')">${done?'Complete':'No clock-out'}</span>
+        <button class="entry-del" onclick="quickDelete('${e.id}')" title="Delete">✕</button>
       </div>
-      <div class="entry-times" onclick="openEdit('${e.id}')" style="cursor:pointer">
+      <div class="entry-bottom-row" onclick="openEdit('${e.id}')">
         <div class="t-val">${fmt12(e.clockIn)||'—'}</div>
         <div class="t-arrow">→</div>
         <div class="t-val ${!done?'no-time':''}">${fmt12(e.clockOut)||'—'}</div>
         ${d?`<div class="dur">${d.label}<small>· ${d.dec}h</small></div>`:''}
       </div>
-      <span class="badge ${done?'done':'pending'}" onclick="openEdit('${e.id}')" style="cursor:pointer">${done?'Complete':'No clock-out'}</span>
-      <button class="entry-del" onclick="quickDelete('${e.id}')" title="Delete">✕</button>
     </div>`;
   }).join('');
 

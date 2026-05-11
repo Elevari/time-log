@@ -282,6 +282,18 @@ button { cursor:pointer; }
 .empty-icon { font-size:2.2rem; margin-bottom:.75rem; opacity:.4; }
 .empty-txt  { font-size:.875rem; line-height:1.6; }
 
+/* ─── ENTRY DELETE BTN ───────────────────────────────────────── */
+.entry-del {
+  flex-shrink:0;
+  width:28px; height:28px;
+  background:none; border:1.5px solid var(--border2);
+  border-radius:6px; color:var(--text3);
+  font-size:.8rem; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .15s; z-index:1;
+}
+.entry-del:hover { background:var(--danger-bg); border-color:var(--danger); color:var(--danger); }
+
 /* ─── PAGINATION ────────────────────────────────────────────── */
 .pagination { display:none; align-items:center; justify-content:space-between; padding:.75rem 1rem 0; gap:.5rem; }
 .pagination.show { display:flex; }
@@ -937,18 +949,19 @@ function renderEntries() {
 
   list.innerHTML=slice.map((e,i)=>{
     const d=calcDur(e.clockIn,e.clockOut), done=!!e.clockOut;
-    return `<div class="entry ${done?'done':'pending'}" style="animation-delay:${i*35}ms" onclick="openEdit('${e.id}')">
-      <div class="entry-left">
+    return `<div class="entry ${done?'done':'pending'}" style="animation-delay:${i*35}ms">
+      <div class="entry-left" onclick="openEdit('${e.id}')" style="flex:1;cursor:pointer;min-width:0">
         <div class="entry-class">${e.className}</div>
         <div class="entry-date">${fmtDate(e.date)}</div>
       </div>
-      <div class="entry-times">
+      <div class="entry-times" onclick="openEdit('${e.id}')" style="cursor:pointer">
         <div class="t-val">${fmt12(e.clockIn)||'—'}</div>
         <div class="t-arrow">→</div>
         <div class="t-val ${!done?'no-time':''}">${fmt12(e.clockOut)||'—'}</div>
         ${d?`<div class="dur">${d.label}<small>· ${d.dec}h</small></div>`:''}
       </div>
-      <span class="badge ${done?'done':'pending'}">${done?'Complete':'No clock-out'}</span>
+      <span class="badge ${done?'done':'pending'}" onclick="openEdit('${e.id}')" style="cursor:pointer">${done?'Complete':'No clock-out'}</span>
+      <button class="entry-del" onclick="quickDelete('${e.id}')" title="Delete">✕</button>
     </div>`;
   }).join('');
 
@@ -1023,6 +1036,15 @@ async function saveEdit() {
   try{await apiPost({action:'update',entry:e});}
   catch{toast('Updated locally — sync failed','⚠️');}
 }
+async function quickDelete(id) {
+  if(!confirm('Delete this entry?')) return;
+  entries = entries.filter(x => x.id !== id);
+  cacheEntries(); renderEntries();
+  toast('Entry deleted','🗑');
+  try { await apiPost({ action:'delete', id }); }
+  catch { toast('Deleted locally — sync failed','⚠️'); }
+}
+
 async function deleteEntry() {
   if(!editingId) return;
   if(!confirm('Delete this entry?')) return;

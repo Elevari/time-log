@@ -706,7 +706,28 @@ function saveClasses()  { localStorage.setItem(K.classes,JSON.stringify(classes)
 function loadClasses()  { try{const c=localStorage.getItem(K.classes);return c?JSON.parse(c):[];}catch{return[];} }
 
 function today() { return new Date().toISOString().split('T')[0]; }
-function fmtDate(d) { if(!d)return''; return new Date(d+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); }
+function parseDate(d) {
+  if(!d) return null;
+  // Already YYYY-MM-DD
+  if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Date(d + 'T00:00:00');
+  // Try parsing as-is (handles Date.toString() format from Sheets)
+  const dt = new Date(d);
+  return isNaN(dt) ? null : dt;
+}
+function fmtDate(d) {
+  const dt = parseDate(d);
+  if(!dt) return '';
+  return dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+}
+function normaliseDate(d) {
+  // Convert any date format to YYYY-MM-DD for storage/sorting
+  const dt = parseDate(d);
+  if(!dt) return d;
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth()+1).padStart(2,'0');
+  const day = String(dt.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 
 function to24(hr,min,ap) {
   let h=parseInt(hr);
@@ -722,7 +743,9 @@ function to12(t24) {
 }
 function fmt12(t24) {
   if(!t24) return null;
-  const {hr,min,ap}=to12(t24); return `${hr}:${min} ${ap}`;
+  // Strip seconds if present (HH:MM:SS → HH:MM)
+  const clean = t24.toString().trim().slice(0,5);
+  const {hr,min,ap}=to12(clean); return `${hr}:${min} ${ap}`;
 }
 function calcDur(inT,outT) {
   if(!inT||!outT) return null;
@@ -1006,7 +1029,13 @@ async function manualSync() {
   showSpinner('Syncing from Google Sheets…');
   try{
     const data=await apiGetAll();
-    entries=(data.entries||[]).filter(r=>r.id); cacheEntries();
+    entries=(data.entries||[]).filter(r=>r.id).map(r=>({
+      ...r,
+      date:     normaliseDate(r.date),
+      clockIn:  r.clockIn  ? r.clockIn.toString().trim().slice(0,5)  : '',
+      clockOut: r.clockOut ? r.clockOut.toString().trim().slice(0,5) : ''
+    }));
+    cacheEntries();
     if(data.classes&&data.classes.length){ classes=data.classes; saveClasses(); populateSelects(); }
     renderEntries();
     toast(`Synced — ${entries.length} entries, ${classes.length} classes`,'✅');
@@ -1098,10 +1127,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     showSpinner('Syncing from Google Sheets…');
     try {
       const data = await apiGetAll();
-      // Load entries
-      entries = (data.entries||[]).filter(r=>r.id);
+      // Normalise entries — sanitise date and time formats from Sheets
+      entries = (data.entries||[]).filter(r=>r.id).map(r=>({
+        ...r,
+        date:     normaliseDate(r.date),
+        clockIn:  r.clockIn  ? r.clockIn.toString().trim().slice(0,5)  : '',
+        clockOut: r.clockOut ? r.clockOut.toString().trim().slice(0,5) : ''
+      }));
       cacheEntries();
-      // Load classes from sheet — merge with any local defaults
+      // Load classes from sheet
       if(data.classes && data.classes.length) {
         classes = data.classes;
         saveClasses();

@@ -59,9 +59,9 @@ function getEntries() {
     .map(r => ({
       id:        String(r[0]),
       className: String(r[1]),
-      date:      String(r[2]),
-      clockIn:   String(r[3]),
-      clockOut:  String(r[4]),
+      date:      fmtDate(r[2]),
+      clockIn:   fmtTime(r[3]),
+      clockOut:  fmtTime(r[4]),
       createdAt: String(r[5])
     }))
     .filter(r => r.id);
@@ -152,6 +152,29 @@ function deleteClass(name) {
 }
 
 // ── HELPERS ───────────────────────────────────────────────────
+
+// Format a cell value as YYYY-MM-DD regardless of how Sheets stored it
+function fmtDate(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    const y = val.getFullYear();
+    const m = String(val.getMonth()+1).padStart(2,'0');
+    const d = String(val.getDate()).padStart(2,'0');
+    return y + '-' + m + '-' + d;
+  }
+  // Already a string — return as-is
+  return String(val);
+}
+
+// Format a cell value as HH:MM (strip seconds if present)
+function fmtTime(val) {
+  if (!val) return '';
+  const s = String(val).trim();
+  // HH:MM:SS → HH:MM
+  if (/^\d{2}:\d{2}:\d{2}$/.test(s)) return s.slice(0, 5);
+  return s;
+}
+
 function getOrCreateSheet(name) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   return ss.getSheetByName(name) || ss.insertSheet(name);

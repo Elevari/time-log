@@ -761,7 +761,7 @@ let deferredInstall = null;
 const $ = id => document.getElementById(id);
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyLh-CLGuCCRfA5GqScJT7G-ZFAtCgy8ktc1dodqQe6dX6smaDsKdyppezwRNOCeXlS/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyAlH353d3N6y-iTDcHFWXR9UB4fwC5XQzl4rZPRvJKmbe27zrCET-Dm8LJzVb98upe/exec';
 function getUrl() { return SCRIPT_URL; }
 
 function cacheEntries() { localStorage.setItem(K.cache,JSON.stringify(entries)); }
@@ -912,7 +912,8 @@ async function flushQueue() {
   const failed = [];
   for(const item of q) {
     try {
-      await fetch(url, { method:'POST', mode:'no-cors', body:JSON.stringify(item.body) });
+      const params = encodeURIComponent(JSON.stringify(item.body));
+      await fetch(url + '?payload=' + params, { redirect:'follow', cache:'no-store' });
     } catch {
       failed.push(item);
     }
@@ -944,9 +945,9 @@ async function apiPost(body) {
     return;
   }
   try {
-    await fetch(url, { method:'POST', mode:'no-cors', body:JSON.stringify(body) });
+    const encoded = encodeURIComponent(JSON.stringify(body));
+    await fetch(url + '?payload=' + encoded, { redirect:'follow', cache:'no-store' });
   } catch {
-    // Network failed despite being "online" — queue it
     enqueue(body);
   }
 }

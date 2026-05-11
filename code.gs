@@ -15,39 +15,49 @@
 //       Execute as:      Me
 //       Who has access:  Anyone
 //  7. Click Deploy and authorize when prompted
-//  8. Copy the Web App URL and paste it into the app Settings
+//  8. Copy the Web App URL — already hardcoded in the app
 //
-//  SHEET STRUCTURE
-//  ─────────────────────────────────────────────────────────────
-//  Sheet1  → A:id | B:className | C:date | D:clockIn | E:clockOut | F:createdAt
-//  Classes → A:name
-//
-//  IMPORTANT: Format columns D and E (clockIn, clockOut) as
-//  Plain Text to prevent Sheets auto-converting times to Date objects.
+//  NOTE: All requests (reads AND writes) use GET with a
+//  'payload' parameter to avoid CORS issues.
 // ─────────────────────────────────────────────────────────────
 
 const ENTRIES_SHEET = 'Sheet1';
 const CLASSES_SHEET = 'Classes';
 
-// ── GET ───────────────────────────────────────────────────────
+// ── ALL REQUESTS COME THROUGH doGet ──────────────────────────
+// action=getAll  → returns all entries and classes
+// payload=<JSON> → write operation (add/update/delete/addClass/etc.)
 function doGet(e) {
-  if (e.parameter.action === 'getAll') return getAll();
+  var action = e.parameter.action;
+  var payload = e.parameter.payload;
+
+  // Read
+  if (action === 'getAll') return getAll();
+
+  // Write — payload is JSON-encoded action object
+  if (payload) {
+    try {
+      var d = JSON.parse(decodeURIComponent(payload));
+      if (d.action === 'add')         return addRow(d.entry);
+      if (d.action === 'update')      return updateRow(d.entry);
+      if (d.action === 'delete')      return deleteRow(d.id);
+      if (d.action === 'addClass')    return addClass(d.name);
+      if (d.action === 'deleteClass') return deleteClass(d.name);
+      if (d.action === 'renameClass') return renameClass(d.oldName, d.newName);
+    } catch(err) {
+      return out({ error: 'Invalid payload: ' + err.message });
+    }
+  }
+
   return out({ error: 'Unknown action' });
 }
 
-// ── POST ──────────────────────────────────────────────────────
+// Keep doPost as fallback (not used by the app but harmless)
 function doPost(e) {
-  const d = JSON.parse(e.postData.contents);
-  if (d.action === 'add')         return addRow(d.entry);
-  if (d.action === 'update')      return updateRow(d.entry);
-  if (d.action === 'delete')      return deleteRow(d.id);
-  if (d.action === 'addClass')    return addClass(d.name);
-  if (d.action === 'deleteClass') return deleteClass(d.name);
-  if (d.action === 'renameClass') return renameClass(d.oldName, d.newName);
-  return out({ error: 'Unknown action' });
+  return out({ error: 'Use GET requests' });
 }
 
-// ── READ ALL ──────────────────────────────────────────────────
+// ── READ ALL (entries + classes) ──────────────────────────────
 function getAll() {
   return out({
     entries: getEntries(),
@@ -87,7 +97,6 @@ function addRow(entry) {
   var sh = getOrCreateSheet(ENTRIES_SHEET);
   if (sh.getLastRow() === 0) {
     sh.appendRow(['id', 'className', 'date', 'clockIn', 'clockOut', 'createdAt']);
-    // Format clockIn/clockOut columns as plain text so Sheets doesn't convert times
     sh.getRange('D:E').setNumberFormat('@');
   }
   sh.appendRow([
@@ -157,61 +166,7 @@ function deleteClass(name) {
   return out({ error: 'Class not found' });
 }
 
-// ── FORMAT DATE → YYYY-MM-DD ──────────────────────────────────
-function fmtDate(val) {
-  if (!val) return '';
-  if (val instanceof Date) {
-    var y = val.getFullYear();
-    var m = String(val.getMonth() + 1).padStart('0', 2);
-    var d = String(val.getDate()).padStart('0', 2);
-    // padStart doesn't exist in GAS — use slice trick
-    m = ('0' + (val.getMonth() + 1)).slice(-2);
-    d = ('0' + val.getDate()).slice(-2);
-    return y + '-' + m + '-' + d;
-  }
-  return String(val);
-}
-
-// ── FORMAT TIME → HH:MM ───────────────────────────────────────
-// Google Sheets stores times as decimal fractions of a day
-// OR as Date objects (epoch 1899-12-30 + time fraction)
-// This function handles all cases and returns clean HH:MM
-function fmtTime(val) {
-  if (val === '' || val === null || val === undefined) return '';
-
-  // Date object (how Sheets internally represents time cells)
-  if (val instanceof Date) {
-    var h = val.getHours();
-    var m = val.getMinutes();
-    return ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2);
-  }
-
-  // Number — decimal fraction of a day (0.708333 = 17:00)
-  if (typeof val === 'number') {
-    var totalMins = Math.round(val * 24 * 60);
-    var hh = Math.floor(totalMins / 60) % 24;
-    var mm = totalMins % 60;
-    return ('0' + hh).slice(-2) + ':' + ('0' + mm).slice(-2);
-  }
-
-  // String
-  var s = String(val).trim();
-  if (!s) return '';
-
-  // Already HH:MM or HH:MM:SS
-  if (/^\d{1,2}:\d{2}/.test(s)) return s.slice(0, 5);
-
-  // Date string like "Sat Dec 30 1899 17:00:00 GMT+0000"
-  // Extract HH:MM with regex
-  var match = s.match(/(\d{1,2}):(\d{2})(?::\d{2})?/);
-  if (match) {
-    return ('0' + match[1]).slice(-2) + ':' + match[2];
-  }
-
-  return '';
-}
-
-// ── RENAME CLASS ─────────────────────────────────────────────
+// ── RENAME CLASS ──────────────────────────────────────────────
 function renameClass(oldName, newName) {
   // Update Classes sheet
   var sh = getOrCreateSheet(CLASSES_SHEET);
@@ -222,7 +177,7 @@ function renameClass(oldName, newName) {
       break;
     }
   }
-  // Update className in all entries
+  // Update className in all matching entries
   var esh = getOrCreateSheet(ENTRIES_SHEET);
   var edata = esh.getDataRange().getValues();
   for (var j = 1; j < edata.length; j++) {
@@ -231,6 +186,37 @@ function renameClass(oldName, newName) {
     }
   }
   return out({ ok: true });
+}
+
+// ── FORMAT DATE → YYYY-MM-DD ──────────────────────────────────
+function fmtDate(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    var m = ('0' + (val.getMonth() + 1)).slice(-2);
+    var d = ('0' + val.getDate()).slice(-2);
+    return val.getFullYear() + '-' + m + '-' + d;
+  }
+  return String(val);
+}
+
+// ── FORMAT TIME → HH:MM ───────────────────────────────────────
+function fmtTime(val) {
+  if (val === '' || val === null || val === undefined) return '';
+  if (val instanceof Date) {
+    return ('0' + val.getHours()).slice(-2) + ':' + ('0' + val.getMinutes()).slice(-2);
+  }
+  if (typeof val === 'number') {
+    var totalMins = Math.round(val * 24 * 60);
+    var hh = Math.floor(totalMins / 60) % 24;
+    var mm = totalMins % 60;
+    return ('0' + hh).slice(-2) + ':' + ('0' + mm).slice(-2);
+  }
+  var s = String(val).trim();
+  if (!s) return '';
+  if (/^\d{1,2}:\d{2}/.test(s)) return s.slice(0, 5);
+  var match = s.match(/(\d{1,2}):(\d{2})(?::\d{2})?/);
+  if (match) return ('0' + match[1]).slice(-2) + ':' + match[2];
+  return '';
 }
 
 // ── HELPERS ───────────────────────────────────────────────────

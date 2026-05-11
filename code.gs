@@ -1,29 +1,32 @@
 // ─────────────────────────────────────────────────────────────
 //  Time.Log — Google Apps Script Backend
-//  
-//  SETUP INSTRUCTIONS
+//
+//  SETUP
 //  ─────────────────────────────────────────────────────────────
-//  1. Open your Google Sheet (any name is fine).
-//  2. Make sure the first sheet tab is named: Sheet1
-//     (or update the SHEET constant below to match your tab name)
+//  1. Open your Google Sheet (any file name is fine).
+//  2. Two sheet tabs are created automatically on first use:
+//       - Sheet1   (time entries)
+//       - Classes  (class names)
 //  3. Click Extensions → Apps Script
 //  4. Delete all existing code and paste this entire file
 //  5. Click Save (floppy disk icon)
 //  6. Click Deploy → New deployment
-//     - Type:            Web app
-//     - Execute as:      Me
-//     - Who has access:  Anyone
+//       Type:            Web app
+//       Execute as:      Me
+//       Who has access:  Anyone
 //  7. Click Deploy and authorize when prompted
-//  8. Copy the Web App URL and paste it into the app's Settings
+//  8. Copy the Web App URL and paste it into the app Settings
 //
-//  SHEET STRUCTURE (auto-created on first entry)
+//  SHEET STRUCTURE
 //  ─────────────────────────────────────────────────────────────
-//  A: id | B: className | C: date | D: clockIn | E: clockOut | F: createdAt
+//  Sheet1  → A:id | B:className | C:date | D:clockIn | E:clockOut | F:createdAt
+//  Classes → A:name
 // ─────────────────────────────────────────────────────────────
 
-const SHEET = 'Sheet1'; // Change this if your sheet tab has a different name
+const ENTRIES_SHEET = 'Sheet1';
+const CLASSES_SHEET = 'Classes';
 
-// ── GET ───────────────────────────────────────────────────────
+// ── GET — returns both entries and classes ────────────────────
 function doGet(e) {
   if (e.parameter.action === 'getAll') return getAll();
   return out({ error: 'Unknown action' });
@@ -32,25 +35,27 @@ function doGet(e) {
 // ── POST ──────────────────────────────────────────────────────
 function doPost(e) {
   const d = JSON.parse(e.postData.contents);
-  if (d.action === 'add')    return addRow(d.entry);
-  if (d.action === 'update') return updateRow(d.entry);
-  if (d.action === 'delete') return deleteRow(d.id);
+  if (d.action === 'add')         return addRow(d.entry);
+  if (d.action === 'update')      return updateRow(d.entry);
+  if (d.action === 'delete')      return deleteRow(d.id);
+  if (d.action === 'addClass')    return addClass(d.name);
+  if (d.action === 'deleteClass') return deleteClass(d.name);
   return out({ error: 'Unknown action' });
 }
 
-// ── READ ALL ENTRIES ──────────────────────────────────────────
+// ── READ ALL (entries + classes) ──────────────────────────────
 function getAll() {
-  const sh = SpreadsheetApp
-    .getActiveSpreadsheet()
-    .getSheetByName(SHEET);
+  return out({
+    entries: getEntries(),
+    classes: getClasses()
+  });
+}
 
-  if (!sh) return out({ entries: [] });
-
+function getEntries() {
+  const sh = getOrCreateSheet(ENTRIES_SHEET);
   const vals = sh.getDataRange().getValues();
-  if (vals.length <= 1) return out({ entries: [] }); // header only or empty
-
-  const rows = vals.slice(1); // skip header row
-  const entries = rows
+  if (vals.length <= 1) return [];
+  return vals.slice(1)
     .map(r => ({
       id:        String(r[0]),
       className: String(r[1]),
@@ -59,21 +64,24 @@ function getAll() {
       clockOut:  String(r[4]),
       createdAt: String(r[5])
     }))
-    .filter(r => r.id); // skip any blank rows
+    .filter(r => r.id);
+}
 
-  return out({ entries });
+function getClasses() {
+  const sh = getOrCreateSheet(CLASSES_SHEET);
+  const vals = sh.getDataRange().getValues();
+  if (vals.length <= 1) return [];
+  return vals.slice(1)
+    .map(r => String(r[0]))
+    .filter(name => name);
 }
 
 // ── ADD ENTRY ─────────────────────────────────────────────────
 function addRow(entry) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sh = ss.getSheetByName(SHEET) || ss.insertSheet(SHEET);
-
-  // Create header row if sheet is empty
+  const sh = getOrCreateSheet(ENTRIES_SHEET);
   if (sh.getLastRow() === 0) {
     sh.appendRow(['id', 'className', 'date', 'clockIn', 'clockOut', 'createdAt']);
   }
-
   sh.appendRow([
     entry.id,
     entry.className,
@@ -82,18 +90,12 @@ function addRow(entry) {
     entry.clockOut || '',
     entry.createdAt
   ]);
-
   return out({ ok: true });
 }
 
 // ── UPDATE ENTRY ──────────────────────────────────────────────
 function updateRow(entry) {
-  const sh = SpreadsheetApp
-    .getActiveSpreadsheet()
-    .getSheetByName(SHEET);
-
-  if (!sh) return out({ error: 'Sheet not found' });
-
+  const sh = getOrCreateSheet(ENTRIES_SHEET);
   const data = sh.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][0]) === String(entry.id)) {
@@ -108,18 +110,12 @@ function updateRow(entry) {
       return out({ ok: true });
     }
   }
-
   return out({ error: 'Entry not found' });
 }
 
 // ── DELETE ENTRY ──────────────────────────────────────────────
 function deleteRow(id) {
-  const sh = SpreadsheetApp
-    .getActiveSpreadsheet()
-    .getSheetByName(SHEET);
-
-  if (!sh) return out({ error: 'Sheet not found' });
-
+  const sh = getOrCreateSheet(ENTRIES_SHEET);
   const data = sh.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][0]) === String(id)) {
@@ -127,11 +123,40 @@ function deleteRow(id) {
       return out({ ok: true });
     }
   }
-
   return out({ error: 'Entry not found' });
 }
 
-// ── RESPONSE HELPER ───────────────────────────────────────────
+// ── ADD CLASS ─────────────────────────────────────────────────
+function addClass(name) {
+  const sh = getOrCreateSheet(CLASSES_SHEET);
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(['name']);
+  }
+  const existing = sh.getDataRange().getValues().map(r => String(r[0]));
+  if (existing.includes(name)) return out({ ok: true, note: 'already exists' });
+  sh.appendRow([name]);
+  return out({ ok: true });
+}
+
+// ── DELETE CLASS ──────────────────────────────────────────────
+function deleteClass(name) {
+  const sh = getOrCreateSheet(CLASSES_SHEET);
+  const data = sh.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === name) {
+      sh.deleteRow(i + 1);
+      return out({ ok: true });
+    }
+  }
+  return out({ error: 'Class not found' });
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function getOrCreateSheet(name) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ss.getSheetByName(name) || ss.insertSheet(name);
+}
+
 function out(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))

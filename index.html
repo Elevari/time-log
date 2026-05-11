@@ -763,24 +763,16 @@ function resetPicker(pfx) {
 /* ═══════════════════════════════════════════
    SHEETS API
 ═══════════════════════════════════════════ */
-async function apiGet() {
+async function apiGetAll() {
   const url=getUrl(); if(!url) throw new Error('No URL');
-  const r=await fetch(url+'?action=getAll', {
-    redirect: 'follow',
-    cache: 'no-store'
-  });
+  const r=await fetch(url+'?action=getAll', { redirect:'follow', cache:'no-store' });
   if(!r.ok) throw new Error('HTTP ' + r.status);
   const d=await r.json(); if(d.error) throw new Error(d.error);
-  return d.entries||[];
+  return d; // returns { entries:[], classes:[] }
 }
 async function apiPost(body) {
   const url=getUrl(); if(!url) return;
-  // mode:no-cors for POST — browser can't read response but sheet still updates
-  await fetch(url, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: JSON.stringify(body)
-  });
+  await fetch(url, { method:'POST', mode:'no-cors', body:JSON.stringify(body) });
 }
 
 /* ═══════════════════════════════════════════
@@ -802,7 +794,7 @@ function handleClassChange(pfx) {
 }
 function showAdd(pfx) { const r=$(pfx+'AddRow'),i=$(pfx+'NewClass'); r.classList.add('open'); i.value=''; i.focus(); }
 function cancelAdd(pfx) { $(pfx+'AddRow').classList.remove('open'); }
-function confirmAdd(pfx) {
+async function confirmAdd(pfx) {
   const inp=$(pfx+'NewClass'), name=inp.value.trim();
   if(!name){inp.focus();return;}
   if(classes.includes(name)){toast('Class already exists','⚠️');inp.focus();return;}
@@ -810,6 +802,9 @@ function confirmAdd(pfx) {
   const other=pfx==='f'?'mClass':'fClass';
   const oel=$(other); if(oel) oel.value=name;
   toast(`"${name}" added`,'✅');
+  // Sync new class to Google Sheets immediately
+  try{ await apiPost({action:'addClass', name}); }
+  catch{ /* silently ignore — local is already saved */ }
 }
 
 /* ═══════════════════════════════════════════
@@ -997,7 +992,7 @@ async function testConn() {
   try{
     const r=await fetch(url+'?action=getAll',{redirect:'follow',cache:'no-store'});
     const d=await r.json();
-    if(d.entries!==undefined){el.className='conn-status ok';el.textContent='✓ Connected!';}
+    if(d.entries!==undefined){el.className='conn-status ok';el.textContent=`✓ Connected — ${(d.entries||[]).length} entries, ${(d.classes||[]).length} classes`;}
     else{el.className='conn-status err';el.textContent='✗ Unexpected response from script';}
   }catch(err){el.className='conn-status err';el.textContent='✗ ' + err.message;}
 }
@@ -1010,9 +1005,11 @@ async function manualSync() {
   if(!getUrl()){openSettings();return;}
   showSpinner('Syncing from Google Sheets…');
   try{
-    const rows=await apiGet();
-    entries=rows.filter(r=>r.id); cacheEntries(); renderEntries();
-    toast(`Synced — ${entries.length} entries`,'✅');
+    const data=await apiGetAll();
+    entries=(data.entries||[]).filter(r=>r.id); cacheEntries();
+    if(data.classes&&data.classes.length){ classes=data.classes; saveClasses(); populateSelects(); }
+    renderEntries();
+    toast(`Synced — ${entries.length} entries, ${classes.length} classes`,'✅');
   }catch{toast('Sync failed — check your connection','⚠️');}
   finally{hideSpinner();}
 }
@@ -1083,19 +1080,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('rFrom').value = `${y}-${mo}-01`;
   $('rTo').value   = today();
 
-  // Load data — show cache immediately, then refresh from Sheets if URL set
+  // Load from cache immediately so UI is ready
   entries = loadCache();
   renderEntries();
   updateHintBanner();
 
+  // Then refresh everything from Google Sheets if a URL is configured
   if(getUrl()) {
     showSpinner('Syncing from Google Sheets…');
     try {
-      const rows = await apiGet();
-      entries = rows.filter(r=>r.id);
+      const data = await apiGetAll();
+      // Load entries
+      entries = (data.entries||[]).filter(r=>r.id);
       cacheEntries();
+      // Load classes from sheet — merge with any local defaults
+      if(data.classes && data.classes.length) {
+        classes = data.classes;
+        saveClasses();
+        populateSelects();
+      }
       renderEntries();
-      toast(`Loaded ${entries.length} entries`,'✅');
+      toast(`Synced — ${entries.length} entries, ${classes.length} classes`,'✅');
     } catch {
       toast('Could not reach Sheets — showing cached data','⚠️');
     } finally {

@@ -521,7 +521,7 @@ button { cursor:pointer; }
   <div class="header">
     <div class="logo">Time<span>.</span>Log</div>
     <div class="hdr-btns">
-      <button class="icon-btn" id="syncBtn" title="Sync" onclick="manualSync()">↻</button>
+      <button class="icon-btn" id="syncBtn" title="Sync" onclick="manualSync()" style="position:relative">↻<span id="queueBadge" style="display:none;position:absolute;top:3px;right:3px;width:7px;height:7px;background:var(--warn);border-radius:50%"></span></button>
       <button class="icon-btn" title="Settings" onclick="openSettings()">⚙</button>
     </div>
   </div>
@@ -750,7 +750,7 @@ button { cursor:pointer; }
 /* ═══════════════════════════════════════════
    CONSTANTS & STATE
 ═══════════════════════════════════════════ */
-const K = { url:'tt_url', classes:'tt_classes', cache:'tt_cache', hint:'tt_hint' };
+const K = { url:'tt_url', classes:'tt_classes', cache:'tt_cache', hint:'tt_hint', queue:'tt_queue' };
 
 const PAGE_SIZE = 5;
 const HOURS = Array.from({length:12},(_,i)=>String(i+1));
@@ -901,10 +901,71 @@ async function apiGetAll() {
   const d=await r.json(); if(d.error) throw new Error(d.error);
   return d; // returns { entries:[], classes:[] }
 }
-async function apiPost(body) {
-  const url=getUrl(); if(!url) return;
-  await fetch(url, { method:'POST', mode:'no-cors', body:JSON.stringify(body) });
+/* ═══════════════════════════════════════════
+   OFFLINE QUEUE
+═══════════════════════════════════════════ */
+function loadQueue()  { try{ return JSON.parse(localStorage.getItem(K.queue)||'[]'); }catch{ return []; } }
+function saveQueue(q) { localStorage.setItem(K.queue, JSON.stringify(q)); }
+
+function enqueue(body) {
+  const q = loadQueue();
+  q.push({ body, ts: Date.now() });
+  saveQueue(q);
 }
+
+async function flushQueue() {
+  const url = getUrl(); if(!url) return;
+  const q = loadQueue(); if(!q.length) return;
+  const failed = [];
+  for(const item of q) {
+    try {
+      await fetch(url, { method:'POST', mode:'no-cors', body:JSON.stringify(item.body) });
+    } catch {
+      failed.push(item);
+    }
+  }
+  saveQueue(failed);
+  if(failed.length < q.length) {
+    const synced = q.length - failed.length;
+    toast(`Synced ${synced} offline change${synced!==1?'s':''}`, '☁️');
+    // After flushing writes, pull fresh data from sheet
+    try {
+      const data = await apiGetAll();
+      entries = (data.entries||[]).filter(r=>r.id).map(r=>({
+        ...r,
+        date:     normaliseDate(r.date),
+        clockIn:  toHHMM(r.clockIn),
+        clockOut: toHHMM(r.clockOut)
+      }));
+      cacheEntries();
+      if(data.classes&&data.classes.length){ classes=data.classes; saveClasses(); populateSelects(); }
+      renderEntries();
+    } catch { /* use local data */ }
+  }
+}
+
+async function apiPost(body) {
+  const url = getUrl(); if(!url) return;
+  if(!navigator.onLine) {
+    enqueue(body);
+    return;
+  }
+  try {
+    await fetch(url, { method:'POST', mode:'no-cors', body:JSON.stringify(body) });
+  } catch {
+    // Network failed despite being "online" — queue it
+    enqueue(body);
+  }
+}
+
+// Listen for connection restored → flush queue
+window.addEventListener('online', () => {
+  const q = loadQueue();
+  if(q.length) {
+    toast(`Back online — syncing ${q.length} pending change${q.length!==1?'s':''}…`, '📶');
+    setTimeout(flushQueue, 1500); // small delay to let connection stabilise
+  }
+});
 
 /* ═══════════════════════════════════════════
    CLASSES
@@ -1008,7 +1069,7 @@ async function saveEntry() {
   toast('Entry saved — add clock-out when class ends','✅');
   resetPicker('f');
   try{await apiPost({action:'add',entry});}
-  catch{toast('Saved locally — sync failed','⚠️');}
+  catch{ } finally{ updateQueueBadge(); }
 }
 
 /* ═══════════════════════════════════════════
@@ -1047,7 +1108,7 @@ async function saveEdit() {
   const d=calcDur(clockIn,clockOut);
   toast(d?`${d.label} · ${d.dec} hrs logged`:'Entry updated','✅');
   try{await apiPost({action:'update',entry:e});}
-  catch{toast('Updated locally — sync failed','⚠️');}
+  catch{ } finally{ updateQueueBadge(); }
 }
 async function quickDelete(id) {
   if(!confirm('Delete this entry?')) return;
@@ -1055,7 +1116,7 @@ async function quickDelete(id) {
   cacheEntries(); renderEntries();
   toast('Entry deleted','🗑');
   try { await apiPost({ action:'delete', id }); }
-  catch { toast('Deleted locally — sync failed','⚠️'); }
+  catch { } finally { updateQueueBadge(); }
 }
 
 async function deleteEntry() {
@@ -1383,6 +1444,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     } finally {
       hideSpinner();
     }
+  }
+
+  // Show queue badge if there are pending offline changes
+  function updateQueueBadge() {
+    const q = loadQueue();
+    const badge = $('queueBadge');
+    if(badge) badge.style.display = q.length ? 'block' : 'none';
+  }
+  updateQueueBadge();
+  // Re-check badge after every potential write
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible') updateQueueBadge();
+  });
+
+  // On startup if online and there's a queue, flush it
+  if(navigator.onLine && getUrl()) {
+    const q = loadQueue();
+    if(q.length) setTimeout(flushQueue, 2000);
   }
 
   // Register service worker — force update if new version available

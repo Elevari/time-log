@@ -1458,6 +1458,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // Periodic sync — every 30 seconds, flush queue if online
+  // Catches cases where 'online' event and visibilitychange both miss
+  // (common in installed PWAs on Android)
+  setInterval(() => {
+    if(navigator.onLine && getUrl() && loadQueue().length) {
+      syncWithSheet();
+    }
+  }, 30000);
+
   // Register service worker — force update if new version available
   if('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(reg => {

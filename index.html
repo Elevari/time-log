@@ -678,7 +678,7 @@ button { cursor:pointer; }
    CONSTANTS & STATE
 ═══════════════════════════════════════════ */
 const K = { url:'tt_url', classes:'tt_classes', cache:'tt_cache', hint:'tt_hint' };
-const DEFAULT_CLASSES = ['MOS (F to F) May 2026','MOS (Online) July 2026'];
+
 const PAGE_SIZE = 10;
 const HOURS = Array.from({length:12},(_,i)=>String(i+1));
 const MINS  = Array.from({length:60},(_,i)=>String(i).padStart(2,'0'));
@@ -701,7 +701,7 @@ function setUrl(u) { localStorage.setItem(K.url,u); }
 function cacheEntries() { localStorage.setItem(K.cache,JSON.stringify(entries)); }
 function loadCache()    { try{return JSON.parse(localStorage.getItem(K.cache)||'[]');}catch{return[];} }
 function saveClasses()  { localStorage.setItem(K.classes,JSON.stringify(classes)); }
-function loadClasses()  { try{const c=localStorage.getItem(K.classes);return c?JSON.parse(c):[...DEFAULT_CLASSES];}catch{return[...DEFAULT_CLASSES];} }
+function loadClasses()  { try{const c=localStorage.getItem(K.classes);return c?JSON.parse(c):[];}catch{return[];} }
 
 function today() { return new Date().toISOString().split('T')[0]; }
 function fmtDate(d) { if(!d)return''; return new Date(d+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); }
@@ -1079,6 +1079,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const now=new Date(), y=now.getFullYear(), mo=String(now.getMonth()+1).padStart(2,'0');
   $('rFrom').value = `${y}-${mo}-01`;
   $('rTo').value   = today();
+
+  // One-time migration: clear any dummy classes from older versions
+  const storedClasses = loadClasses();
+  const dummies = ['MOS (F to F) May 2026', 'MOS (Online) July 2026'];
+  const hasDummies = storedClasses.some(cl => dummies.includes(cl));
+  if (hasDummies) {
+    const cleaned = storedClasses.filter(cl => !dummies.includes(cl));
+    localStorage.setItem(K.classes, JSON.stringify(cleaned));
+  }
 
   // Load from cache immediately so UI is ready
   entries = loadCache();

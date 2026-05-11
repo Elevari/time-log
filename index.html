@@ -760,13 +760,20 @@ function sheetsTimeToHHMM(val) {
 function fmt12(t24) {
   if(!t24 && t24 !== 0) return null;
   const clean = sheetsTimeToHHMM(t24);
-  if(!clean) return null;
+  if(!clean || !isValidHHMM(clean)) return null;
   const {hr,min,ap}=to12(clean);
-  if(min==='NaN'||hr==='NaN') return null;
   return `${hr}:${min} ${ap}`;
+}
+function isValidHHMM(t) {
+  if(!t) return false;
+  const parts = t.split(':');
+  if(parts.length < 2) return false;
+  const h = Number(parts[0]), m = Number(parts[1]);
+  return !isNaN(h) && !isNaN(m) && h>=0 && h<=23 && m>=0 && m<=59;
 }
 function calcDur(inT,outT) {
   if(!inT||!outT) return null;
+  if(!isValidHHMM(inT)||!isValidHHMM(outT)) return null;
   const [ih,im]=inT.split(':').map(Number);
   const [oh,om]=outT.split(':').map(Number);
   const diff=(oh*60+om)-(ih*60+im);
@@ -1135,8 +1142,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     localStorage.setItem(K.classes, JSON.stringify(cleaned));
   }
 
-  // Load from cache immediately so UI is ready
-  entries = loadCache();
+  // Load from cache — sanitise any previously corrupted time values
+  entries = loadCache().map(r => ({
+    ...r,
+    clockIn:  sheetsTimeToHHMM(r.clockIn),
+    clockOut: sheetsTimeToHHMM(r.clockOut)
+  }));
   renderEntries();
   updateHintBanner();
 

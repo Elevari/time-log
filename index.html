@@ -429,10 +429,7 @@ button { cursor:pointer; }
 }
 .btn-ghost:hover { border-color:var(--accent); color:var(--accent); }
 .btn-ghost-full { width:100%; padding:.8rem; text-align:center; margin-top:.4rem; }
-.conn-status { font-size:.75rem; margin-top:.45rem; min-height:1.1em; transition:color .2s; }
-.conn-status.ok   { color:var(--accent); }
-.conn-status.err  { color:var(--danger); }
-.conn-status.info { color:var(--text3); }
+
 
 
 
@@ -700,23 +697,12 @@ button { cursor:pointer; }
     <div class="sheet-title">Settings</div>
     <div class="sheet-sub">Manage connection &amp; classes</div>
 
-    <!-- Google Sheets -->
-    <div style="margin-bottom:1.5rem">
-      <div class="setting-lbl">Google Sheets</div>
-      <div class="field" style="margin-bottom:.4rem">
-        <input type="url" id="settingsUrl" placeholder="https://script.google.com/macros/s/…/exec">
-        <div class="conn-status info" id="connStatus">Not connected</div>
-      </div>
-      <div class="conn-row">
-        <button class="btn-ghost" onclick="testConn()">Test</button>
-        <button class="btn-save" style="flex:1;padding:.65rem" onclick="saveUrl()">Save URL</button>
-      </div>
-    </div>
+
 
     <!-- Actions -->
     <div style="margin-bottom:1.5rem">
       <div class="setting-lbl">Data</div>
-      <button class="btn-ghost btn-ghost-full" onclick="closeSettings();manualSync()">↻ Sync from Sheets</button>
+      <button class="btn-ghost btn-ghost-full" onclick="closeSettings();manualSync()">↻ Sync from Google Sheets</button>
     </div>
 
     <!-- Manage Classes -->
@@ -768,8 +754,8 @@ let deferredInstall = null;
 const $ = id => document.getElementById(id);
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 
-function getUrl()  { return localStorage.getItem(K.url)||''; }
-function setUrl(u) { localStorage.setItem(K.url,u); }
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyLh-CLGuCCRfA5GqScJT7G-ZFAtCgy8ktc1dodqQe6dX6smaDsKdyppezwRNOCeXlS/exec';
+function getUrl() { return SCRIPT_URL; }
 
 function cacheEntries() { localStorage.setItem(K.cache,JSON.stringify(entries)); }
 function loadCache()    { try{return JSON.parse(localStorage.getItem(K.cache)||'[]');}catch{return[];} }
@@ -1173,11 +1159,10 @@ function switchTab(name,btn) {
    HINT BANNER
 ═══════════════════════════════════════════ */
 function updateHintBanner() {
-  const dismissed=localStorage.getItem(K.hint)==='1';
-  const hasUrl=!!getUrl();
-  $('hintBanner').classList.toggle('hidden', dismissed||hasUrl);
+  // URL is hardcoded — always hide hint banner
+  $('hintBanner').classList.add('hidden');
 }
-function dismissHint() { localStorage.setItem(K.hint,'1'); $('hintBanner').classList.add('hidden'); }
+function dismissHint() { $('hintBanner').classList.add('hidden'); }
 
 /* ═══════════════════════════════════════════
    SETTINGS — MANAGE CLASSES
@@ -1290,7 +1275,6 @@ $('settingsNewClass') && $('settingsNewClass').addEventListener('keydown', e => 
    SETTINGS
 ═══════════════════════════════════════════ */
 function openSettings() {
-  $('settingsUrl').value=getUrl(); updateConnStatus();
   settingsCancelAdd(); editingClass=null;
   renderSettingsClasses();
   $('settingsOverlay').classList.add('open');

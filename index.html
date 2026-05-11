@@ -417,6 +417,46 @@ button { cursor:pointer; }
 
 
 
+/* ─── MANAGE CLASSES ────────────────────────────────────────── */
+.class-list { display:flex; flex-direction:column; gap:.4rem; margin-bottom:.75rem; }
+.class-row {
+  display:flex; align-items:center; gap:.5rem;
+  background:var(--bg3); border:1px solid var(--border);
+  border-radius:var(--rsm); padding:.55rem .75rem;
+}
+.class-row-name {
+  flex:1; font-size:.875rem; color:var(--text);
+  font-family:var(--B); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.class-row-edit {
+  background:none; border:1px solid var(--border2);
+  border-radius:6px; color:var(--text3);
+  font-size:.75rem; padding:.25rem .55rem;
+  transition:all .15s; flex-shrink:0;
+}
+.class-row-edit:hover { border-color:var(--accent); color:var(--accent); }
+.class-row-del {
+  background:none; border:1px solid transparent;
+  border-radius:6px; color:var(--text3);
+  font-size:.85rem; padding:.25rem .45rem;
+  transition:all .15s; flex-shrink:0; line-height:1;
+}
+.class-row-del:hover { border-color:var(--danger); color:var(--danger); }
+.class-edit-row {
+  display:none; gap:.4rem; align-items:center; margin-top:.25rem;
+}
+.class-edit-row.open { display:flex; }
+.class-edit-row input {
+  flex:1; background:var(--bg3);
+  border:1.5px solid var(--accent);
+  border-radius:var(--rsm); padding:.55rem .85rem;
+  color:var(--text); font-size:.875rem; outline:none;
+}
+.class-empty-note {
+  font-size:.8rem; color:var(--text3);
+  text-align:center; padding:.75rem 0;
+}
+
 /* ─── TOAST ─────────────────────────────────────────────────── */
 .toasts {
   position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%);
@@ -658,6 +698,18 @@ button { cursor:pointer; }
     <div style="margin-bottom:1.5rem">
       <div class="setting-lbl">Data</div>
       <button class="btn-ghost btn-ghost-full" onclick="closeSettings();manualSync()">↻ Sync from Sheets</button>
+    </div>
+
+    <!-- Manage Classes -->
+    <div style="margin-bottom:1.5rem">
+      <div class="setting-lbl">Classes</div>
+      <div class="class-list" id="settingsClassList"></div>
+      <div class="class-edit-row" id="settingsAddRow">
+        <input type="text" id="settingsNewClass" placeholder="New class name…" maxlength="60">
+        <button class="btn-add" onclick="settingsConfirmAdd()">Add</button>
+        <button class="btn-x"   onclick="settingsCancelAdd()">✕</button>
+      </div>
+      <button class="btn-ghost btn-ghost-full" style="margin-top:.4rem" onclick="settingsShowAdd()">＋ Add new class</button>
     </div>
 
     <div style="margin-top:1.25rem">
@@ -1032,10 +1084,119 @@ function updateHintBanner() {
 function dismissHint() { localStorage.setItem(K.hint,'1'); $('hintBanner').classList.add('hidden'); }
 
 /* ═══════════════════════════════════════════
+   SETTINGS — MANAGE CLASSES
+═══════════════════════════════════════════ */
+let editingClass = null; // name of class currently being renamed
+
+function renderSettingsClasses() {
+  const list = $('settingsClassList');
+  if(!list) return;
+  if(!classes.length) {
+    list.innerHTML = '<div class="class-empty-note">No classes yet</div>';
+    return;
+  }
+  list.innerHTML = classes.map((name, i) => `
+    <div>
+      <div class="class-row" id="crow-${i}">
+        <div class="class-row-name">${name}</div>
+        <button class="class-row-edit" onclick="startEditClass(${i})">Rename</button>
+        <button class="class-row-del"  onclick="deleteClass(${i})" title="Delete">✕</button>
+      </div>
+      <div class="class-edit-row" id="cedit-${i}">
+        <input type="text" id="cinput-${i}" value="${name}" maxlength="60"
+          onkeydown="if(event.key==='Enter')confirmEditClass(${i});if(event.key==='Escape')cancelEditClass(${i})">
+        <button class="btn-add" onclick="confirmEditClass(${i})">Save</button>
+        <button class="btn-x"   onclick="cancelEditClass(${i})">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function startEditClass(i) {
+  // Close any open edit rows first
+  if(editingClass !== null) cancelEditClass(editingClass);
+  editingClass = i;
+  $(`cedit-${i}`).classList.add('open');
+  const inp = $(`cinput-${i}`);
+  inp.focus(); inp.select();
+}
+
+function cancelEditClass(i) {
+  const row = $(`cedit-${i}`);
+  if(row) row.classList.remove('open');
+  editingClass = null;
+}
+
+async function confirmEditClass(i) {
+  const inp = $(`cinput-${i}`);
+  const newName = inp.value.trim();
+  const oldName = classes[i];
+  if(!newName) { inp.focus(); return; }
+  if(newName === oldName) { cancelEditClass(i); return; }
+  if(classes.includes(newName)) { toast('A class with that name already exists','⚠️'); inp.focus(); return; }
+
+  // Update in memory and local storage
+  classes[i] = newName;
+  saveClasses();
+  // Update any entries that used the old class name
+  entries.forEach(e => { if(e.className === oldName) e.className = newName; });
+  cacheEntries();
+  cancelEditClass(i);
+  renderSettingsClasses();
+  populateSelects();
+  renderEntries();
+  toast(`Renamed to "${newName}"`, '✅');
+
+  // Sync to Sheets
+  try {
+    await apiPost({ action: 'renameClass', oldName, newName });
+  } catch { toast('Renamed locally — sync failed', '⚠️'); }
+}
+
+async function deleteClass(i) {
+  const name = classes[i];
+  if(!confirm(`Delete "${name}"? This won't delete entries logged under it.`)) return;
+  classes.splice(i, 1);
+  saveClasses();
+  renderSettingsClasses();
+  populateSelects();
+  toast(`"${name}" deleted`, '🗑');
+  try { await apiPost({ action: 'deleteClass', name }); }
+  catch { toast('Deleted locally — sync failed', '⚠️'); }
+}
+
+function settingsShowAdd() {
+  $('settingsAddRow').classList.add('open');
+  $('settingsNewClass').value = '';
+  $('settingsNewClass').focus();
+}
+function settingsCancelAdd() {
+  $('settingsAddRow').classList.remove('open');
+}
+async function settingsConfirmAdd() {
+  const inp = $('settingsNewClass');
+  const name = inp.value.trim();
+  if(!name) { inp.focus(); return; }
+  if(classes.includes(name)) { toast('Class already exists','⚠️'); inp.focus(); return; }
+  classes.push(name); saveClasses(); populateSelects(name);
+  settingsCancelAdd(); renderSettingsClasses();
+  toast(`"${name}" added`, '✅');
+  try { await apiPost({ action: 'addClass', name }); }
+  catch { toast('Added locally — sync failed', '⚠️'); }
+}
+
+$('settingsNewClass') && $('settingsNewClass').addEventListener('keydown', e => {
+  if(e.key === 'Enter') settingsConfirmAdd();
+  if(e.key === 'Escape') settingsCancelAdd();
+});
+
+/* ═══════════════════════════════════════════
    SETTINGS
 ═══════════════════════════════════════════ */
 function openSettings() {
   $('settingsUrl').value=getUrl(); updateConnStatus();
+  settingsCancelAdd(); editingClass=null;
+  renderSettingsClasses();
   $('settingsOverlay').classList.add('open');
 }
 function closeSettings() { $('settingsOverlay').classList.remove('open'); }

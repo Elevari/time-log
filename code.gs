@@ -43,6 +43,7 @@ function doPost(e) {
   if (d.action === 'delete')      return deleteRow(d.id);
   if (d.action === 'addClass')    return addClass(d.name);
   if (d.action === 'deleteClass') return deleteClass(d.name);
+  if (d.action === 'renameClass') return renameClass(d.oldName, d.newName);
   return out({ error: 'Unknown action' });
 }
 
@@ -208,6 +209,28 @@ function fmtTime(val) {
   }
 
   return '';
+}
+
+// ── RENAME CLASS ─────────────────────────────────────────────
+function renameClass(oldName, newName) {
+  // Update Classes sheet
+  var sh = getOrCreateSheet(CLASSES_SHEET);
+  var data = sh.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === oldName) {
+      sh.getRange(i + 1, 1).setValue(newName);
+      break;
+    }
+  }
+  // Update className in all entries
+  var esh = getOrCreateSheet(ENTRIES_SHEET);
+  var edata = esh.getDataRange().getValues();
+  for (var j = 1; j < edata.length; j++) {
+    if (String(edata[j][1]) === oldName) {
+      esh.getRange(j + 1, 2).setValue(newName);
+    }
+  }
+  return out({ ok: true });
 }
 
 // ── HELPERS ───────────────────────────────────────────────────

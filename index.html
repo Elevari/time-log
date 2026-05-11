@@ -753,10 +753,10 @@ function toHHMM(val) {
   }
   const s = String(val).trim();
   if(!s || s === 'undefined' || s === 'null') return '';
-  // Numeric string with no colon
+  // Numeric string with no colon — decimal fraction as string
   if(s.indexOf(':') === -1) {
     const num = parseFloat(s);
-    if(!isNaN(num)) {
+    if(!isNaN(num) && num >= 0 && num < 1) {
       const totalMins = Math.round(num * 24 * 60);
       const h = Math.floor(totalMins / 60) % 24;
       const m = totalMins % 60;
@@ -1177,6 +1177,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         populateSelects();
       }
       renderEntries();
+      if(entries.length > 0) {
+        const e0 = entries[0];
+        console.log('First entry raw:', JSON.stringify(e0));
+      }
       toast(`Synced — ${entries.length} entries, ${classes.length} classes`,'✅');
     } catch {
       toast('Could not reach Sheets — showing cached data','⚠️');
@@ -1185,9 +1189,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Register service worker
+  // Register service worker — force update if new version available
   if('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          if(newWorker.state === 'activated') window.location.reload();
+        });
+      });
+      reg.update();
+    }).catch(()=>{});
   }
 
 });

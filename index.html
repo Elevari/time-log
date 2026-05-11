@@ -1176,21 +1176,31 @@ function renderSettingsClasses() {
     list.innerHTML = '<div class="class-empty-note">No classes yet</div>';
     return;
   }
-  list.innerHTML = classes.map((name, i) => `
+  list.innerHTML = classes.map((name, i) => {
+    const safe = name.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+    return `
     <div>
-      <div class="class-row" id="crow-${i}">
-        <div class="class-row-name">${name}</div>
+      <div class="class-row">
+        <div class="class-row-name">${safe}</div>
         <button class="class-row-edit" onclick="startEditClass(${i})">Rename</button>
         <button class="class-row-del"  onclick="deleteClass(${i})" title="Delete">✕</button>
       </div>
       <div class="class-edit-row" id="cedit-${i}">
-        <input type="text" id="cinput-${i}" value="${name}" maxlength="60"
-          onkeydown="if(event.key==='Enter')confirmEditClass(${i});if(event.key==='Escape')cancelEditClass(${i})">
+        <input type="text" id="cinput-${i}" value="${safe}" maxlength="60">
         <button class="btn-add" onclick="confirmEditClass(${i})">Save</button>
         <button class="btn-x"   onclick="cancelEditClass(${i})">✕</button>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
+
+  // Wire keydown after rendering (avoids inline handler quoting issues)
+  classes.forEach((_, i) => {
+    const inp = $('cinput-' + i);
+    if(inp) inp.addEventListener('keydown', e => {
+      if(e.key === 'Enter')  confirmEditClass(i);
+      if(e.key === 'Escape') cancelEditClass(i);
+    });
+  });
 }
 
 function startEditClass(i) {

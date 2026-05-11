@@ -241,15 +241,16 @@ button { cursor:pointer; }
 }
 .list-hdr .card-lbl { margin:0; }
 .list-count { font-size:.72rem; color:var(--text3); }
-.entries { padding:0 1rem; display:flex; flex-direction:column; gap:.6rem; }
+.entries { padding:0 1rem; display:flex; flex-direction:column; gap:.4rem; }
 
 /* ─── ENTRY CARD ────────────────────────────────────────────── */
 .entry {
   background:var(--bg2); border:1.5px solid var(--border);
-  border-radius:var(--r); padding:1rem 1.1rem;
+  border-radius:var(--rsm); padding:.7rem 1rem;
   cursor:pointer; position:relative; overflow:hidden;
   transition:border-color .15s,background .15s,transform .12s;
   animation:fadeUp .3s var(--ease) both;
+  display:flex; align-items:center; gap:.75rem;
 }
 .entry::before {
   content:''; position:absolute;
@@ -259,27 +260,22 @@ button { cursor:pointer; }
 .entry.pending::before { background:var(--warn); }
 .entry:hover  { background:var(--bg3); border-color:var(--border2); transform:translateY(-1px); }
 .entry:active { transform:scale(.99); }
-.entry-top {
-  display:flex; align-items:flex-start;
-  justify-content:space-between; gap:.5rem; margin-bottom:.55rem;
-}
-.entry-class { font-family:var(--H); font-size:.95rem; font-weight:700; }
-.entry-date  { font-size:.72rem; color:var(--text3); margin-top:.15rem; }
+.entry-left { flex:1; min-width:0; }
+.entry-class { font-family:var(--H); font-size:.85rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.entry-date  { font-size:.7rem; color:var(--text3); margin-top:.05rem; }
+.entry-times { display:flex; align-items:center; gap:.35rem; flex-shrink:0; }
+.t-val       { font-family:var(--H); font-size:.85rem; font-weight:600; white-space:nowrap; }
+.t-val.empty { color:var(--text3); }
+.t-arrow { color:var(--text3); font-size:.75rem; }
+.dur { font-family:var(--H); font-size:.78rem; font-weight:700; color:var(--accent); white-space:nowrap; }
+.dur small { display:inline; font-family:var(--B); font-size:.68rem; font-weight:400; color:var(--text3); margin-left:.25rem; }
 .badge {
-  font-size:.62rem; font-weight:700; letter-spacing:.07em;
-  text-transform:uppercase; padding:.2rem .55rem;
+  font-size:.58rem; font-weight:700; letter-spacing:.06em;
+  text-transform:uppercase; padding:.18rem .45rem;
   border-radius:99px; white-space:nowrap; flex-shrink:0;
 }
 .badge.done    { background:var(--accent-bg); color:var(--accent); border:1px solid rgba(200,240,78,.2); }
 .badge.pending { background:var(--warn-bg);   color:var(--warn);   border:1px solid rgba(240,150,78,.2); }
-.entry-times { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
-.t-chip { display:flex; flex-direction:column; gap:.1rem; }
-.t-lbl  { font-size:.62rem; color:var(--text3); text-transform:uppercase; letter-spacing:.06em; }
-.t-val  { font-family:var(--H); font-size:1rem; font-weight:600; }
-.t-val.empty { color:var(--text3); font-weight:400; font-size:.88rem; font-style:italic; font-family:var(--B); }
-.t-arrow { color:var(--text3); font-size:.85rem; margin-top:.8rem; }
-.dur { margin-left:auto; font-family:var(--H); font-size:.82rem; font-weight:700; color:var(--accent); }
-.dur small { display:block; font-family:var(--B); font-size:.7rem; font-weight:400; color:var(--text3); text-align:right; }
 
 /* ─── EMPTY STATE ───────────────────────────────────────────── */
 .empty { text-align:center; padding:3rem 1.5rem; color:var(--text3); }
@@ -832,16 +828,17 @@ function renderEntries() {
   list.innerHTML=slice.map((e,i)=>{
     const d=calcDur(e.clockIn,e.clockOut), done=!!e.clockOut;
     return `<div class="entry ${done?'done':'pending'}" style="animation-delay:${i*35}ms" onclick="openEdit('${e.id}')">
-      <div class="entry-top">
-        <div><div class="entry-class">${e.className}</div><div class="entry-date">${fmtDate(e.date)}</div></div>
-        <span class="badge ${done?'done':'pending'}">${done?'Complete':'Need clock-out'}</span>
+      <div class="entry-left">
+        <div class="entry-class">${e.className}</div>
+        <div class="entry-date">${fmtDate(e.date)}</div>
       </div>
       <div class="entry-times">
-        <div class="t-chip"><div class="t-lbl">In</div><div class="t-val">${fmt12(e.clockIn)||'—'}</div></div>
+        <div class="t-val">${fmt12(e.clockIn)||'—'}</div>
         <div class="t-arrow">→</div>
-        <div class="t-chip"><div class="t-lbl">Out</div><div class="t-val ${!done?'empty':''}">${fmt12(e.clockOut)||'tap to add'}</div></div>
-        ${d?`<div class="dur">${d.label}<small>${d.dec} hrs</small></div>`:''}
+        <div class="t-val ${!done?'empty':''}">${fmt12(e.clockOut)||'—'}</div>
+        ${d?`<div class="dur">${d.label}<small>· ${d.dec}h</small></div>`:''}
       </div>
+      <span class="badge ${done?'done':'pending'}">${done?'Complete':'No clock-out'}</span>
     </div>`;
   }).join('');
 

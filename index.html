@@ -740,9 +740,9 @@ button { cursor:pointer; }
 <div class="toasts" id="toasts"></div>
 
 <script>
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    CONSTANTS & STATE
-═══════════════════════════════════════════ */
+------------------------------------------- */
 const K = { classes:'tt_classes', cache:'tt_cache', hint:'tt_hint', queue:'tt_queue' };
 
 const PAGE_SIZE = 5;
@@ -755,9 +755,9 @@ let editingId = null;
 let page      = 1;
 let deferredInstall = null;
 
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    HELPERS
-═══════════════════════════════════════════ */
+------------------------------------------- */
 const $ = id => document.getElementById(id);
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 
@@ -855,9 +855,9 @@ function calcDur(inT,outT) {
   return {label:m===0?`${h}h`:`${h}h ${m}m`,dec:(diff/60).toFixed(2)};
 }
 
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    TIME PICKER
-═══════════════════════════════════════════ */
+------------------------------------------- */
 function buildPicker(pfx) {
   const h=$(pfx+'Hr'),m=$(pfx+'Min'); if(!h||!m)return;
   h.innerHTML=HOURS.map(v=>`<option>${v}</option>`).join('');
@@ -884,9 +884,9 @@ function resetPicker(pfx) {
   $(pfx+'Hr').selectedIndex=0; $(pfx+'Min').selectedIndex=0; setAP(pfx,'AM');
 }
 
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    SHEETS API
-═══════════════════════════════════════════ */
+------------------------------------------- */
 async function apiGetAll() {
   const url=getUrl(); if(!url) throw new Error('No URL');
   const r=await fetch(url+'?action=getAll', { redirect:'follow', cache:'no-store' });
@@ -894,9 +894,9 @@ async function apiGetAll() {
   const d=await r.json(); if(d.error) throw new Error(d.error);
   return d; // returns { entries:[], classes:[] }
 }
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    OFFLINE QUEUE
-═══════════════════════════════════════════ */
+------------------------------------------- */
 function loadQueue()  { try{ return JSON.parse(localStorage.getItem(K.queue)||'[]'); }catch{ return []; } }
 function saveQueue(q) { localStorage.setItem(K.queue, JSON.stringify(q)); }
 
@@ -960,9 +960,9 @@ window.addEventListener('online', () => {
   }
 });
 
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    CLASSES
-═══════════════════════════════════════════ */
+------------------------------------------- */
 function populateSelects(active) {
   ['fClass','mClass','rClass'].forEach(id=>{
     const el=$(id); if(!el) return;
@@ -989,9 +989,9 @@ async function confirmAdd(pfx) {
   catch{ /* silently ignore — local is already saved */ }
 }
 
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    RENDER ENTRIES
-═══════════════════════════════════════════ */
+------------------------------------------- */
 function renderEntries() {
   const sorted=[...entries].sort((a,b)=>
     b.date!==a.date?b.date.localeCompare(a.date):(b.clockIn||'').localeCompare(a.clockIn||''));
@@ -1049,9 +1049,9 @@ function renderEntries() {
   next.onclick=()=>{page++;renderEntries();scrollTo(0,0);}; pb.appendChild(next);
 }
 
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    SAVE ENTRY
-═══════════════════════════════════════════ */
+------------------------------------------- */
 async function saveEntry() {
   const cls=$('fClass').value, date=$('fDate').value, clockIn=getT('f');
   if(!cls)    {toast('Pick a class','⚠️');return;}
@@ -1065,9 +1065,9 @@ async function saveEntry() {
   catch{ } finally{ updateQueueBadge(); }
 }
 
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    EDIT SHEET
-═══════════════════════════════════════════ */
+------------------------------------------- */
 function refreshDurPreview() {
   const inT=getT('mIn'), outT=getT('mOut'), d=calcDur(inT,outT);
   const p=$('durPreview');
@@ -1122,9 +1122,9 @@ async function deleteEntry() {
   catch{toast('Deleted locally — sync failed','⚠️');}
 }
 
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    SUMMARY
-═══════════════════════════════════════════ */
+------------------------------------------- */
 function calcSummary() {
   const from=$('rFrom').value, to=$('rTo').value, cls=$('rClass').value;
   if(!from||!to){toast('Pick a date range','⚠️');return;}
@@ -1151,9 +1151,9 @@ function calcSummary() {
   $('result').classList.add('show');
 }
 
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    TABS
-═══════════════════════════════════════════ */
+------------------------------------------- */
 function switchTab(name,btn) {
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -1162,18 +1162,18 @@ function switchTab(name,btn) {
   if(name==='summary') populateSelects();
 }
 
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    HINT BANNER
-═══════════════════════════════════════════ */
+------------------------------------------- */
 function updateHintBanner() {
   // URL is hardcoded — always hide hint banner
   $('hintBanner').classList.add('hidden');
 }
 function dismissHint() { $('hintBanner').classList.add('hidden'); }
 
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    SETTINGS — MANAGE CLASSES
-═══════════════════════════════════════════ */
+------------------------------------------- */
 let renamingIndex = null;
 
 function renderSettingsClasses() {
@@ -1229,7 +1229,7 @@ async function confirmRename() {
 
 async function deleteClass(i) {
   const name = classes[i];
-  if(!confirm('Delete "' + name + '"? This won't delete entries logged under it.')) return;
+  if(!confirm(`Delete "${name}"? This will not delete entries logged under it.`)) return;
   classes.splice(i, 1);
   saveClasses();
   renderSettingsClasses();
@@ -1267,35 +1267,16 @@ $('renameInput').addEventListener('keydown', e => {
   if(e.key === 'Escape') cancelRename();
 });
 
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    SETTINGS
-═══════════════════════════════════════════ */
+------------------------------------------- */
 function openSettings() {
   settingsCancelAdd(); cancelRename();
   renderSettingsClasses();
   $('settingsOverlay').classList.add('open');
 }
 function closeSettings() { $('settingsOverlay').classList.remove('open'); }
-function updateConnStatus() {
-  const u=getUrl(), el=$('connStatus');
-  if(!u){el.className='conn-status info';el.textContent='Not connected';}
-  else  {el.className='conn-status ok';  el.textContent='✓ URL configured';}
-}
-async function testConn() {
-  const url=$('settingsUrl').value.trim(); if(!url){toast('Enter a URL first','⚠️');return;}
-  const el=$('connStatus'); el.className='conn-status info'; el.textContent='Testing…';
-  try{
-    const r=await fetch(url+'?action=getAll',{redirect:'follow',cache:'no-store'});
-    const d=await r.json();
-    if(d.entries!==undefined){el.className='conn-status ok';el.textContent=`✓ Connected — ${(d.entries||[]).length} entries, ${(d.classes||[]).length} classes`;}
-    else{el.className='conn-status err';el.textContent='✗ Unexpected response from script';}
-  }catch(err){el.className='conn-status err';el.textContent='✗ ' + err.message;}
-}
-function saveUrl() {
-  const url=$('settingsUrl').value.trim(); setUrl(url);
-  updateConnStatus(); updateHintBanner();
-  toast(url?'URL saved':'URL cleared','✅'); closeSettings();
-}
+
 async function manualSync() {
   if(!getUrl()){openSettings();return;}
   showSpinner('Syncing from Google Sheets…');
@@ -1315,15 +1296,15 @@ async function manualSync() {
   finally{hideSpinner();}
 }
 
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    SPINNER
-═══════════════════════════════════════════ */
+------------------------------------------- */
 function showSpinner(msg) { $('spinnerTxt').textContent=msg||'Loading…'; $('spinnerWrap').classList.add('show'); }
 function hideSpinner()     { $('spinnerWrap').classList.remove('show'); }
 
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    TOAST
-═══════════════════════════════════════════ */
+------------------------------------------- */
 function toast(msg,icon='ℹ️') {
   const el=document.createElement('div'); el.className='toast';
   el.innerHTML=`<span>${icon}</span><span>${msg}</span>`;
@@ -1332,9 +1313,9 @@ function toast(msg,icon='ℹ️') {
   setTimeout(()=>{el.classList.remove('show');setTimeout(()=>el.remove(),350);},3200);
 }
 
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    PWA INSTALL
-═══════════════════════════════════════════ */
+------------------------------------------- */
 window.addEventListener('beforeinstallprompt',e=>{
   e.preventDefault(); deferredInstall=e;
   $('installBanner').classList.add('show');
@@ -1344,9 +1325,9 @@ window.addEventListener('appinstalled',()=>{
   toast('App installed!','📱');
 });
 
-/* ═══════════════════════════════════════════
+/* -------------------------------------------
    INIT
-═══════════════════════════════════════════ */
+------------------------------------------- */
 document.addEventListener('DOMContentLoaded', async () => {
 
   // Build time pickers

@@ -790,7 +790,7 @@ function populateSelects(active) {
 }
 function handleClassChange(pfx) {
   const sel=$(pfx==='f'?'fClass':'mClass');
-  if(sel.value==='__add__'){sel.value=classes[0];showAdd(pfx);}
+  if(sel.value==='__add__'){if(classes.length) sel.value=classes[0]; showAdd(pfx);}
 }
 function showAdd(pfx) { const r=$(pfx+'AddRow'),i=$(pfx+'NewClass'); r.classList.add('open'); i.value=''; i.focus(); }
 function cancelAdd(pfx) { $(pfx+'AddRow').classList.remove('open'); }

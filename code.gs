@@ -21,12 +21,15 @@
 //  ─────────────────────────────────────────────────────────────
 //  Sheet1  → A:id | B:className | C:date | D:clockIn | E:clockOut | F:createdAt
 //  Classes → A:name
+//
+//  IMPORTANT: Format columns D and E (clockIn, clockOut) as
+//  Plain Text to prevent Sheets auto-converting times to Date objects.
 // ─────────────────────────────────────────────────────────────
 
 const ENTRIES_SHEET = 'Sheet1';
 const CLASSES_SHEET = 'Classes';
 
-// ── GET — returns both entries and classes ────────────────────
+// ── GET ───────────────────────────────────────────────────────
 function doGet(e) {
   if (e.parameter.action === 'getAll') return getAll();
   return out({ error: 'Unknown action' });
@@ -43,7 +46,7 @@ function doPost(e) {
   return out({ error: 'Unknown action' });
 }
 
-// ── READ ALL (entries + classes) ──────────────────────────────
+// ── READ ALL ──────────────────────────────────────────────────
 function getAll() {
   return out({
     entries: getEntries(),
@@ -52,60 +55,64 @@ function getAll() {
 }
 
 function getEntries() {
-  const sh = getOrCreateSheet(ENTRIES_SHEET);
-  const vals = sh.getDataRange().getValues();
+  var sh = getOrCreateSheet(ENTRIES_SHEET);
+  var vals = sh.getDataRange().getValues();
   if (vals.length <= 1) return [];
   return vals.slice(1)
-    .map(r => ({
-      id:        String(r[0]),
-      className: String(r[1]),
-      date:      fmtDate(r[2]),
-      clockIn:   fmtTime(r[3]),
-      clockOut:  fmtTime(r[4]),
-      createdAt: String(r[5])
-    }))
-    .filter(r => r.id);
+    .map(function(r) {
+      return {
+        id:        String(r[0]),
+        className: String(r[1]),
+        date:      fmtDate(r[2]),
+        clockIn:   fmtTime(r[3]),
+        clockOut:  fmtTime(r[4]),
+        createdAt: String(r[5])
+      };
+    })
+    .filter(function(r) { return r.id && r.id !== 'undefined'; });
 }
 
 function getClasses() {
-  const sh = getOrCreateSheet(CLASSES_SHEET);
-  const vals = sh.getDataRange().getValues();
+  var sh = getOrCreateSheet(CLASSES_SHEET);
+  var vals = sh.getDataRange().getValues();
   if (vals.length <= 1) return [];
   return vals.slice(1)
-    .map(r => String(r[0]))
-    .filter(name => name);
+    .map(function(r) { return String(r[0]); })
+    .filter(function(name) { return name && name !== 'undefined'; });
 }
 
 // ── ADD ENTRY ─────────────────────────────────────────────────
 function addRow(entry) {
-  const sh = getOrCreateSheet(ENTRIES_SHEET);
+  var sh = getOrCreateSheet(ENTRIES_SHEET);
   if (sh.getLastRow() === 0) {
     sh.appendRow(['id', 'className', 'date', 'clockIn', 'clockOut', 'createdAt']);
+    // Format clockIn/clockOut columns as plain text so Sheets doesn't convert times
+    sh.getRange('D:E').setNumberFormat('@');
   }
   sh.appendRow([
     entry.id,
     entry.className,
     entry.date,
-    entry.clockIn,
-    entry.clockOut || '',
-    entry.createdAt
+    entry.clockIn   || '',
+    entry.clockOut  || '',
+    entry.createdAt || ''
   ]);
   return out({ ok: true });
 }
 
 // ── UPDATE ENTRY ──────────────────────────────────────────────
 function updateRow(entry) {
-  const sh = getOrCreateSheet(ENTRIES_SHEET);
-  const data = sh.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
+  var sh = getOrCreateSheet(ENTRIES_SHEET);
+  var data = sh.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
     if (String(data[i][0]) === String(entry.id)) {
       sh.getRange(i + 1, 1, 1, 6).setValues([[
         entry.id,
         entry.className,
         entry.date,
-        entry.clockIn,
-        entry.clockOut || '',
-        entry.createdAt
+        entry.clockIn   || '',
+        entry.clockOut  || '',
+        entry.createdAt || ''
       ]]);
       return out({ ok: true });
     }
@@ -115,9 +122,9 @@ function updateRow(entry) {
 
 // ── DELETE ENTRY ──────────────────────────────────────────────
 function deleteRow(id) {
-  const sh = getOrCreateSheet(ENTRIES_SHEET);
-  const data = sh.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
+  var sh = getOrCreateSheet(ENTRIES_SHEET);
+  var data = sh.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
     if (String(data[i][0]) === String(id)) {
       sh.deleteRow(i + 1);
       return out({ ok: true });
@@ -128,21 +135,19 @@ function deleteRow(id) {
 
 // ── ADD CLASS ─────────────────────────────────────────────────
 function addClass(name) {
-  const sh = getOrCreateSheet(CLASSES_SHEET);
-  if (sh.getLastRow() === 0) {
-    sh.appendRow(['name']);
-  }
-  const existing = sh.getDataRange().getValues().map(r => String(r[0]));
-  if (existing.includes(name)) return out({ ok: true, note: 'already exists' });
+  var sh = getOrCreateSheet(CLASSES_SHEET);
+  if (sh.getLastRow() === 0) sh.appendRow(['name']);
+  var existing = sh.getDataRange().getValues().map(function(r) { return String(r[0]); });
+  if (existing.indexOf(name) !== -1) return out({ ok: true, note: 'already exists' });
   sh.appendRow([name]);
   return out({ ok: true });
 }
 
 // ── DELETE CLASS ──────────────────────────────────────────────
 function deleteClass(name) {
-  const sh = getOrCreateSheet(CLASSES_SHEET);
-  const data = sh.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
+  var sh = getOrCreateSheet(CLASSES_SHEET);
+  var data = sh.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
     if (String(data[i][0]) === name) {
       sh.deleteRow(i + 1);
       return out({ ok: true });
@@ -151,43 +156,63 @@ function deleteClass(name) {
   return out({ error: 'Class not found' });
 }
 
-// ── HELPERS ───────────────────────────────────────────────────
-
-// Format a cell value as YYYY-MM-DD regardless of how Sheets stored it
+// ── FORMAT DATE → YYYY-MM-DD ──────────────────────────────────
 function fmtDate(val) {
   if (!val) return '';
   if (val instanceof Date) {
-    const y = val.getFullYear();
-    const m = String(val.getMonth()+1).padStart(2,'0');
-    const d = String(val.getDate()).padStart(2,'0');
+    var y = val.getFullYear();
+    var m = String(val.getMonth() + 1).padStart('0', 2);
+    var d = String(val.getDate()).padStart('0', 2);
+    // padStart doesn't exist in GAS — use slice trick
+    m = ('0' + (val.getMonth() + 1)).slice(-2);
+    d = ('0' + val.getDate()).slice(-2);
     return y + '-' + m + '-' + d;
   }
-  // Already a string — return as-is
   return String(val);
 }
 
-// Format a cell value as HH:MM
-// Handles: Sheets decimal fraction, HH:MM:SS string, HH:MM string
+// ── FORMAT TIME → HH:MM ───────────────────────────────────────
+// Google Sheets stores times as decimal fractions of a day
+// OR as Date objects (epoch 1899-12-30 + time fraction)
+// This function handles all cases and returns clean HH:MM
 function fmtTime(val) {
   if (val === '' || val === null || val === undefined) return '';
-  // Sheets stores times as decimal fractions of a day (e.g. 0.708333 = 17:00)
+
+  // Date object (how Sheets internally represents time cells)
+  if (val instanceof Date) {
+    var h = val.getHours();
+    var m = val.getMinutes();
+    return ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2);
+  }
+
+  // Number — decimal fraction of a day (0.708333 = 17:00)
   if (typeof val === 'number') {
     var totalMins = Math.round(val * 24 * 60);
-    var h = Math.floor(totalMins / 60) % 24;
-    var m = totalMins % 60;
-    return ('0'+h).slice(-2) + ':' + ('0'+m).slice(-2);
+    var hh = Math.floor(totalMins / 60) % 24;
+    var mm = totalMins % 60;
+    return ('0' + hh).slice(-2) + ':' + ('0' + mm).slice(-2);
   }
+
+  // String
   var s = String(val).trim();
   if (!s) return '';
-  // HH:MM:SS → HH:MM
-  if (/^\d{1,2}:\d{2}:\d{2}$/.test(s)) return s.slice(0, 5);
-  // Already HH:MM
-  if (/^\d{1,2}:\d{2}$/.test(s)) return s;
-  return s;
+
+  // Already HH:MM or HH:MM:SS
+  if (/^\d{1,2}:\d{2}/.test(s)) return s.slice(0, 5);
+
+  // Date string like "Sat Dec 30 1899 17:00:00 GMT+0000"
+  // Extract HH:MM with regex
+  var match = s.match(/(\d{1,2}):(\d{2})(?::\d{2})?/);
+  if (match) {
+    return ('0' + match[1]).slice(-2) + ':' + match[2];
+  }
+
+  return '';
 }
 
+// ── HELPERS ───────────────────────────────────────────────────
 function getOrCreateSheet(name) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
   return ss.getSheetByName(name) || ss.insertSheet(name);
 }
 

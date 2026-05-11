@@ -753,7 +753,9 @@ function toHHMM(val) {
   }
   const s = String(val).trim();
   if(!s || s === 'undefined' || s === 'null') return '';
-  // Numeric string with no colon — decimal fraction as string
+  // Already clean HH:MM or HH:MM:SS
+  if(/^\d{1,2}:\d{2}/.test(s)) return s.slice(0,5);
+  // Numeric string — decimal fraction
   if(s.indexOf(':') === -1) {
     const num = parseFloat(s);
     if(!isNaN(num) && num >= 0 && num < 1) {
@@ -764,8 +766,10 @@ function toHHMM(val) {
     }
     return '';
   }
-  // HH:MM or HH:MM:SS — just take first 5 chars
-  return s.slice(0, 5);
+  // Date string like "Sat Dec 30 1899 17:00:00 GMT+0000" — extract HH:MM
+  const match = s.match(/(\d{1,2}):(\d{2})(?::\d{2})?/);
+  if(match) return String(match[1]).padStart(2,'0') + ':' + match[2];
+  return '';
 }
 function fmt12(val) {
   const t = toHHMM(val);
@@ -1177,10 +1181,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         populateSelects();
       }
       renderEntries();
-      if(entries.length > 0) {
-        const e0 = entries[0];
-        console.log('First entry raw:', JSON.stringify(e0));
-      }
       toast(`Synced — ${entries.length} entries, ${classes.length} classes`,'✅');
     } catch {
       toast('Could not reach Sheets — showing cached data','⚠️');

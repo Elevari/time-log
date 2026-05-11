@@ -741,11 +741,29 @@ function to12(t24) {
   const ap=h>=12?'PM':'AM'; h=h%12||12;
   return {hr:String(h),min:String(m).padStart(2,'0'),ap};
 }
+function sheetsTimeToHHMM(val) {
+  if(!val && val !== 0) return '';
+  const s = String(val).trim();
+  if(!s || s === 'undefined' || s === 'null') return '';
+  // Sheets decimal fraction (e.g. 0.708333 = 17:00)
+  const num = parseFloat(s);
+  if(!isNaN(num) && s.indexOf(':') === -1) {
+    const totalMins = Math.round(num * 24 * 60);
+    const h = Math.floor(totalMins / 60) % 24;
+    const m = totalMins % 60;
+    return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+  }
+  // HH:MM:SS → HH:MM
+  if(/^\d{1,2}:\d{2}(:\d{2})?$/.test(s)) return s.slice(0,5);
+  return s;
+}
 function fmt12(t24) {
-  if(!t24) return null;
-  // Strip seconds if present (HH:MM:SS → HH:MM)
-  const clean = t24.toString().trim().slice(0,5);
-  const {hr,min,ap}=to12(clean); return `${hr}:${min} ${ap}`;
+  if(!t24 && t24 !== 0) return null;
+  const clean = sheetsTimeToHHMM(t24);
+  if(!clean) return null;
+  const {hr,min,ap}=to12(clean);
+  if(min==='NaN'||hr==='NaN') return null;
+  return `${hr}:${min} ${ap}`;
 }
 function calcDur(inT,outT) {
   if(!inT||!outT) return null;
@@ -1131,8 +1149,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       entries = (data.entries||[]).filter(r=>r.id).map(r=>({
         ...r,
         date:     normaliseDate(r.date),
-        clockIn:  r.clockIn  ? r.clockIn.toString().trim().slice(0,5)  : '',
-        clockOut: r.clockOut ? r.clockOut.toString().trim().slice(0,5) : ''
+        clockIn:  sheetsTimeToHHMM(r.clockIn),
+        clockOut: sheetsTimeToHHMM(r.clockOut)
       }));
       cacheEntries();
       // Load classes from sheet

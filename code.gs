@@ -166,12 +166,23 @@ function fmtDate(val) {
   return String(val);
 }
 
-// Format a cell value as HH:MM (strip seconds if present)
+// Format a cell value as HH:MM
+// Handles: Sheets decimal fraction, HH:MM:SS string, HH:MM string
 function fmtTime(val) {
-  if (!val) return '';
-  const s = String(val).trim();
+  if (val === '' || val === null || val === undefined) return '';
+  // Sheets stores times as decimal fractions of a day (e.g. 0.708333 = 17:00)
+  if (typeof val === 'number') {
+    var totalMins = Math.round(val * 24 * 60);
+    var h = Math.floor(totalMins / 60) % 24;
+    var m = totalMins % 60;
+    return ('0'+h).slice(-2) + ':' + ('0'+m).slice(-2);
+  }
+  var s = String(val).trim();
+  if (!s) return '';
   // HH:MM:SS → HH:MM
-  if (/^\d{2}:\d{2}:\d{2}$/.test(s)) return s.slice(0, 5);
+  if (/^\d{1,2}:\d{2}:\d{2}$/.test(s)) return s.slice(0, 5);
+  // Already HH:MM
+  if (/^\d{1,2}:\d{2}$/.test(s)) return s;
   return s;
 }
 

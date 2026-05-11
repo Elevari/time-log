@@ -709,6 +709,13 @@ button { cursor:pointer; }
     <div style="margin-bottom:1.5rem">
       <div class="setting-lbl">Classes</div>
       <div class="class-list" id="settingsClassList"></div>
+      <!-- Shared rename input -->
+      <div class="class-edit-row" id="renameRow" style="margin-bottom:.5rem">
+        <input type="text" id="renameInput" placeholder="New name…" maxlength="60">
+        <button class="btn-add" onclick="confirmRename()">Save</button>
+        <button class="btn-x"   onclick="cancelRename()">✕</button>
+      </div>
+      <!-- Add new class -->
       <div class="class-edit-row" id="settingsAddRow">
         <input type="text" id="settingsNewClass" placeholder="New class name…" maxlength="60">
         <button class="btn-add" onclick="settingsConfirmAdd()">Add</button>
@@ -1167,7 +1174,7 @@ function dismissHint() { $('hintBanner').classList.add('hidden'); }
 /* ═══════════════════════════════════════════
    SETTINGS — MANAGE CLASSES
 ═══════════════════════════════════════════ */
-let editingClass = null; // name of class currently being renamed
+let renamingIndex = null;
 
 function renderSettingsClasses() {
   const list = $('settingsClassList');
@@ -1176,84 +1183,59 @@ function renderSettingsClasses() {
     list.innerHTML = '<div class="class-empty-note">No classes yet</div>';
     return;
   }
-  list.innerHTML = classes.map((name, i) => {
-    const safe = name.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-    return `
-    <div>
-      <div class="class-row">
-        <div class="class-row-name">${safe}</div>
-        <button class="class-row-edit" onclick="startEditClass(${i})">Rename</button>
-        <button class="class-row-del"  onclick="deleteClass(${i})" title="Delete">✕</button>
-      </div>
-      <div class="class-edit-row" id="cedit-${i}">
-        <input type="text" id="cinput-${i}" value="${safe}" maxlength="60">
-        <button class="btn-add" onclick="confirmEditClass(${i})">Save</button>
-        <button class="btn-x"   onclick="cancelEditClass(${i})">✕</button>
-      </div>
-    </div>`;
-  }).join('');
-
-  // Wire keydown after rendering (avoids inline handler quoting issues)
-  classes.forEach((_, i) => {
-    const inp = $('cinput-' + i);
-    if(inp) inp.addEventListener('keydown', e => {
-      if(e.key === 'Enter')  confirmEditClass(i);
-      if(e.key === 'Escape') cancelEditClass(i);
-    });
-  });
+  list.innerHTML = classes.map((name, i) =>
+    `<div class="class-row">
+      <div class="class-row-name">${name}</div>
+      <button class="class-row-edit" onclick="startRename(${i})">Rename</button>
+      <button class="class-row-del"  onclick="deleteClass(${i})">✕</button>
+    </div>`
+  ).join('');
 }
 
-function startEditClass(i) {
-  // Close any open edit rows first
-  if(editingClass !== null) cancelEditClass(editingClass);
-  editingClass = i;
-  $(`cedit-${i}`).classList.add('open');
-  const inp = $(`cinput-${i}`);
-  inp.focus(); inp.select();
+function startRename(i) {
+  renamingIndex = i;
+  const inp = $('renameInput');
+  inp.value = classes[i];
+  $('renameRow').classList.add('open');
+  $('settingsAddRow').classList.remove('open');
+  inp.focus();
+  inp.select();
 }
 
-function cancelEditClass(i) {
-  const row = $(`cedit-${i}`);
-  if(row) row.classList.remove('open');
-  editingClass = null;
+function cancelRename() {
+  $('renameRow').classList.remove('open');
+  renamingIndex = null;
 }
 
-async function confirmEditClass(i) {
-  const inp = $(`cinput-${i}`);
-  const newName = inp.value.trim();
-  const oldName = classes[i];
-  if(!newName) { inp.focus(); return; }
-  if(newName === oldName) { cancelEditClass(i); return; }
-  if(classes.includes(newName)) { toast('A class with that name already exists','⚠️'); inp.focus(); return; }
+async function confirmRename() {
+  if(renamingIndex === null) return;
+  const newName = $('renameInput').value.trim();
+  const oldName = classes[renamingIndex];
+  if(!newName) { $('renameInput').focus(); return; }
+  if(newName === oldName) { cancelRename(); return; }
+  if(classes.includes(newName)) { toast('That name already exists','⚠️'); $('renameInput').focus(); return; }
 
-  // Update in memory and local storage
-  classes[i] = newName;
+  classes[renamingIndex] = newName;
   saveClasses();
-  // Update any entries that used the old class name
   entries.forEach(e => { if(e.className === oldName) e.className = newName; });
   cacheEntries();
-  cancelEditClass(i);
+  cancelRename();
   renderSettingsClasses();
   populateSelects();
   renderEntries();
   toast(`Renamed to "${newName}"`, '✅');
-
-  // Sync to Sheets
-  try {
-    await apiPost({ action: 'renameClass', oldName, newName });
-  } catch { toast('Renamed locally — sync failed', '⚠️'); }
+  try { await apiPost({ action:'renameClass', oldName, newName }); } catch {}
 }
 
 async function deleteClass(i) {
   const name = classes[i];
-  if(!confirm(`Delete "${name}"? This won't delete entries logged under it.`)) return;
+  if(!confirm('Delete "' + name + '"? This won't delete entries logged under it.')) return;
   classes.splice(i, 1);
   saveClasses();
   renderSettingsClasses();
   populateSelects();
-  toast(`"${name}" deleted`, '🗑');
-  try { await apiPost({ action: 'deleteClass', name }); }
-  catch { toast('Deleted locally — sync failed', '⚠️'); }
+  toast('"' + name + '" deleted', '🗑');
+  try { await apiPost({ action:'deleteClass', name }); } catch {}
 }
 
 function settingsShowAdd() {
@@ -1280,12 +1262,16 @@ $('settingsNewClass') && $('settingsNewClass').addEventListener('keydown', e => 
   if(e.key === 'Enter') settingsConfirmAdd();
   if(e.key === 'Escape') settingsCancelAdd();
 });
+$('renameInput').addEventListener('keydown', e => {
+  if(e.key === 'Enter') confirmRename();
+  if(e.key === 'Escape') cancelRename();
+});
 
 /* ═══════════════════════════════════════════
    SETTINGS
 ═══════════════════════════════════════════ */
 function openSettings() {
-  settingsCancelAdd(); editingClass=null;
+  settingsCancelAdd(); cancelRename();
   renderSettingsClasses();
   $('settingsOverlay').classList.add('open');
 }
